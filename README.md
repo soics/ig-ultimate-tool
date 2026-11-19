@@ -47,7 +47,11 @@ Everything that changes your account shows you the full list first, offers a **d
 
 The first time, it sets itself up (a minute or two). It installs [uv](https://docs.astral.sh/uv/), a small tool that downloads the right version of Python for you, so you don't have to install anything yourself.
 
-**3. Follow the screen.** Type `I agree`, then choose **Try everything on a pretend account first** to look around safely, or **Log in to my Instagram** when you're ready. Type the number of what you want and press Enter. **Ctrl+C** always goes back.
+**3. Follow the screen.** Type `I agree`, then pick how you want to use it:
+
+- **Use it in my web browser**: the easiest. A page opens with buttons and checkboxes (it runs only on your computer, nothing is online).
+- **Try everything on a pretend account first**: look around safely, nothing real changes.
+- **Log in here**: everything in the black window. Type the number you want and press Enter; **Ctrl+C** always goes back.
 
 ## AI auto-reply in 2 minutes
 

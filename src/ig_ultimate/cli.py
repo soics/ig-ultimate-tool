@@ -460,11 +460,16 @@ def run(preview: bool = False) -> int:
             start = menu(
                 "How do you want to start?",
                 [
-                    ("1", "Log in to my Instagram"),
+                    ("1", "Log in to my Instagram (here in this window)"),
                     ("2", "Try everything on a pretend account first (no login, nothing real changes)"),
+                    ("3", "Use it in my web browser instead (easier: buttons and checkboxes)"),
                 ],
                 back="Exit",
             )
+            if start == "3":
+                from . import webapp
+
+                return webapp.serve()
             if start == "2":
                 import os
 

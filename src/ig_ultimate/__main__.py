@@ -14,7 +14,12 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="try every screen on a pretend account (no login, nothing real changes)",
     )
+    parser.add_argument("--web", action="store_true", help="open the easy version in your web browser")
     args = parser.parse_args(argv)
+    if args.web:
+        from . import webapp
+
+        sys.exit(webapp.serve(preview=args.preview))
     if args.preview:
         from . import paths
 

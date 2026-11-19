@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; form-action 'none'; base-uri 'none'">
+<title>IG Ultimate Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600..800&display=swap" rel="stylesheet">
+<style>
+:root { --cloud:#EEF2F7; --paper:#FFF; --ink:#18212F; --slate:#5B6778; --rule:#CBD3DE; --eraser:#FF4F81; --nuke:#D7263D; --ok:#1F8A5B;
+  --display:"Bricolage Grotesque",system-ui,sans-serif; --body:"Atkinson Hyperlegible",system-ui,sans-serif; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--cloud); color:var(--ink); font:1rem/1.55 var(--body); }
+button, input, select, textarea { font:inherit; color:inherit; }
+:focus-visible { outline:3px solid var(--eraser); outline-offset:2px; border-radius:6px; }
+h1, h2, h3 { font-family:var(--display); letter-spacing:-.02em; line-height:1.1; margin:0 0 .6rem; }
+h1 { font-size:2.4rem; } h2 { font-size:1.7rem; } h3 { font-size:1.2rem; }
+.muted { color:var(--slate); } .err { color:var(--nuke); font-weight:700; } .good { color:var(--ok); font-weight:700; }
+.btn { font-weight:700; padding:.7rem 1.1rem; border-radius:999px; border:2px solid var(--ink); background:var(--ink); color:#fff; cursor:pointer; }
+.btn:hover:not(:disabled) { background:var(--eraser); border-color:var(--eraser); }
+.btn.ghost { background:transparent; color:var(--ink); }
+.btn.ghost:hover:not(:disabled) { background:var(--ink); border-color:var(--ink); color:#fff; }
+.btn.danger { background:var(--nuke); border-color:var(--nuke); }
+.btn:disabled { opacity:.4; cursor:not-allowed; }
+input[type=text], input[type=password], input[type=number], select, textarea { width:100%; max-width:26rem; padding:.6rem .75rem; border:2px solid var(--rule); border-radius:12px; background:#fff; }
+textarea { min-height:5rem; }
+label.field { display:grid; gap:.3rem; margin:.8rem 0; font-weight:700; }
+label.check { display:flex; gap:.5rem; align-items:center; margin:.5rem 0; }
+.row { display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; margin-top:1rem; }
+.card { background:var(--paper); border-radius:18px; padding:1.5rem; }
+
+header { display:flex; flex-wrap:wrap; gap:1rem; align-items:center; justify-content:space-between; padding:1rem 1.25rem; }
+header .brand { font:800 1.15rem/1 var(--display); }
+header .who { display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; }
+.pill { padding:.3rem .7rem; border-radius:999px; background:#fff; border:1px solid var(--rule); font-size:.9rem; }
+.pill.preview { border-color:var(--eraser); color:var(--eraser); }
+
+#login { max-width:30rem; margin:4vh auto; padding:0 1rem; }
+#app { display:grid; grid-template-columns:14rem 1fr; gap:1.5rem; padding:0 1.25rem 12rem; max-width:1200px; margin:0 auto; }
+@media (max-width:780px) { #app { grid-template-columns:1fr; } }
+nav { display:flex; flex-direction:column; gap:.3rem; }
+@media (max-width:780px) { nav { flex-direction:row; flex-wrap:wrap; } }
+nav button { text-align:left; padding:.6rem .9rem; border-radius:12px; border:0; background:transparent; cursor:pointer; font-weight:700; }
+nav button[aria-current="true"] { background:var(--ink); color:#fff; }
+nav button.nuke { color:var(--nuke); } nav button.nuke[aria-current="true"] { background:var(--nuke); color:#fff; }
+.tools { display:grid; gap:.5rem; margin-bottom:1.5rem; }
+.tools button { text-align:left; padding:.8rem 1rem; border-radius:12px; border:2px solid var(--rule); background:#fff; cursor:pointer; font-weight:700; }
+.tools button[aria-pressed="true"] { border-color:var(--ink); }
+.list { max-height:24rem; overflow:auto; border:1px solid var(--rule); border-radius:12px; padding:.5rem .9rem; margin:.75rem 0; columns:2 16rem; }
+.list label { display:flex; gap:.5rem; break-inside:avoid; padding:.15rem 0; }
+.warn { background:#FFF4E5; border-radius:12px; padding:.75rem 1rem; margin:.75rem 0; }
+table { border-collapse:collapse; width:100%; max-width:34rem; margin:.75rem 0; }
+td { padding:.35rem .5rem; border-bottom:1px solid var(--rule); } td:last-child { text-align:right; font-weight:700; }
+
+#job { position:fixed; left:0; right:0; bottom:0; background:var(--ink); color:#fff; padding:1rem 1.25rem; max-height:45vh; overflow:auto; }
+#job[hidden] { display:none; }
+#job .bar { height:.5rem; background:#ffffff33; border-radius:99px; overflow:hidden; margin:.5rem 0; }
+#job .bar span { display:block; height:100%; background:var(--eraser); width:0; transition:width .3s; }
+#job pre { white-space:pre-wrap; font:.9rem/1.45 var(--body); margin:.5rem 0 0; max-height:9rem; overflow:auto; color:#d8dee8; }
+#job .btn { border-color:#fff; }
+pre.log { white-space:pre-wrap; background:#fff; border:1px solid var(--rule); border-radius:12px; padding:.75rem; max-height:18rem; overflow:auto; font:.92rem/1.45 var(--body); }
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">IG Ultimate Tool</span>
+  <div class="who" id="who"></div>
+</header>
+
+<section id="login" hidden>
+  <div class="card">
+    <h1>Log in to Instagram</h1>
+    <p class="muted">Your password goes straight to Instagram from this computer and is never saved.</p>
+    <p class="muted" id="remembered" hidden>You're remembered on this computer: just press Log in.</p>
+    <label class="field">Username <input type="text" id="u" autocomplete="username"></label>
+    <label class="field">Password <input type="password" id="p" autocomplete="current-password"></label>
+    <div class="row"><button class="btn" id="loginBtn" type="button">Log in</button>
+      <button class="btn ghost" id="previewBtn" type="button">Try a pretend account</button></div>
+    <div id="codeBox" hidden class="warn">
+      <p id="codeQ"></p>
+      <div class="row"><input type="text" id="code" inputmode="numeric" autocomplete="one-time-code"><button class="btn" id="codeBtn" type="button">Send code</button></div>
+    </div>
+    <p id="loginMsg" role="status" aria-live="polite"></p>
+  </div>
+</section>
+
+<div id="app" hidden>
+  <nav id="nav" aria-label="Sections"></nav>
+  <main id="main" class="card"></main>
+</div>
+
+<section id="job" hidden aria-live="polite">
+  <div class="row" style="margin:0;justify-content:space-between"><strong id="jobTitle"></strong><span id="jobCount"></span>
+    <button class="btn ghost" id="stopBtn" type="button">Stop</button>
+    <button class="btn ghost" id="closeBtn" type="button">Close</button></div>
+  <div class="bar"><span id="jobBar"></span></div>
+  <div id="jobResult"></div>
+  <pre id="jobLog"></pre>
+</section>
+
+<script>
+(() => {
+  const T = new URLSearchParams(location.search).get("t") || "";
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids.filter((k) => k != null)); return n; };
+  let S = {}, C = {}, section = "Followers";
+
+  async function api(path, body) {
+    const opts = body === undefined ? { headers: { "X-Token": T } }
+      : { method: "POST", headers: { "X-Token": T, "Content-Type": "application/json" }, body: JSON.stringify(body) };
+    const r = await fetch(path, opts);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || "Something went wrong.");
+    return d;
+  }
+  const say = (node, text, cls = "") => { node.className = cls; node.textContent = text; };
+
+  // ---------------------------------------------------------------- login
+  $("loginBtn").onclick = async () => {
+    try { await api("/api/login", { username: $("u").value, password: $("p").value }); $("p").value = ""; say($("loginMsg"), "Logging in..."); }
+    catch (e) { say($("loginMsg"), e.message, "err"); }
+  };
+  $("previewBtn").onclick = () => api("/api/preview", {}).then(refresh);
+  $("codeBtn").onclick = async () => { await api("/api/answer", { text: $("code").value }); $("code").value = ""; };
+
+  // ---------------------------------------------------------------- sections
+  const SECTIONS = ["Followers", "Chats", "Posts", "Footprint", "Profile", "Auto-reply", "Nuke", "Settings"];
+  function drawNav() {
+    $("nav").replaceChildren(...SECTIONS.map((s) => {
+      const b = el("button", { type: "button", textContent: s === "Nuke" ? "NUKE" : s, className: s === "Nuke" ? "nuke" : "" });
+      b.setAttribute("aria-current", s === section);
+      b.onclick = () => { section = s; drawNav(); drawMain(); };
+      return b;
+    }));
+  }
+  function drawMain() {
+    const m = $("main");
+    if (section === "Nuke") return drawNuke(m);
+    if (section === "Auto-reply") return drawAI(m);
+    if (section === "Settings") return drawSettings(m);
+    const list = C.tools.filter((t) => t.section === section);
+    const holder = el("div");
+    const buttons = list.map((t) => {
+      const b = el("button", { type: "button", textContent: t.label });
+      b.onclick = () => { buttons.forEach((x) => x.setAttribute("aria-pressed", x === b)); drawTool(holder, t); };
+      return b;
+    });
+    m.replaceChildren(el("h2", { textContent: section }), el("div", { className: "tools" }, ...buttons), holder);
+    if (list.length === 1) buttons[0].click();
+  }
+
+  function drawTool(holder, tool) {
+    const inputs = {};
+    const fields = tool.fields.map((f) => {
+      const input = el("input", { type: f.type === "checkbox" ? "checkbox" : f.type, value: f.default || "" });
+      inputs[f.name] = input;
+      return f.type === "checkbox" ? el("label", { className: "check" }, input, f.label) : el("label", { className: "field" }, f.label, input);
+    });
+    const out = el("div");
+    const go = el("button", { className: "btn", type: "button", textContent: "Show me the list" });
+    go.onclick = async () => {
+      const params = {};
+      for (const [k, i] of Object.entries(inputs)) params[k] = i.type === "checkbox" ? i.checked : i.value;
+      say(out, "Reading your account...", "muted");
+      try { drawPlan(out, await api("/api/plan", { tool: tool.id, params }), tool); } catch (e) { say(out, e.message, "err"); }
+    };
+    holder.replaceChildren(el("h3", { textContent: tool.label }), ...fields, el("div", { className: "row" }, go), out);
+  }
+
+  function drawPlan(out, plan, tool) {
+    if (!plan.count) { out.replaceChildren(el("p", { className: "good", textContent: "Nothing to do here, already clean." })); return; }
+    const head = el("h3", { textContent: `${plan.title}: ${plan.count}` });
+    const notes = [];
+    if (plan.experimental) notes.push(el("p", { className: "warn", textContent: "Experimental: this uses an Instagram feature we couldn't fully test yet. If it fails, nothing else is affected." }));
+    if (plan.resumable) notes.push(el("p", { className: "muted", textContent: `A previous run stopped after ${plan.resumable}. It will continue where it left off.` }));
+    if (plan.count > plan.items.length) notes.push(el("p", { className: "muted", textContent: `Showing the first ${plan.items.length}. Full list: ${plan.list_file}` }));
+    const boxes = plan.items.map(([id, label]) => { const c = el("input", { type: "checkbox", checked: true }); c.dataset.id = id; return [c, el("label", {}, c, label)]; });
+    const listBox = el("div", { className: "list" }, ...boxes.map((b) => b[1]));
+    if (tool.readonly) { boxes.forEach(([c]) => (c.hidden = true)); out.replaceChildren(head, ...notes, listBox); return; }
+    const all = el("button", { className: "btn ghost", type: "button", textContent: "Untick all" });
+    all.onclick = () => { const on = all.textContent === "Tick all"; boxes.forEach(([c]) => (c.checked = on)); all.textContent = on ? "Untick all" : "Tick all"; };
+    const yes = el("input", { type: "text", placeholder: "type yes", ariaLabel: "Type yes to confirm" });
+    yes.style.maxWidth = "9rem";
+    const doIt = el("button", { className: "btn", type: "button", textContent: "Do it", disabled: true });
+    yes.oninput = () => (doIt.disabled = yes.value.trim().toLowerCase() !== "yes");
+    const dry = el("button", { className: "btn ghost", type: "button", textContent: "Dry run (change nothing)" });
+    const msg = el("p", { role: "status" });
+    const exclude = () => boxes.filter(([c]) => !c.checked).map(([c]) => c.dataset.id);
+    const run = async (isDry) => {
+      try { await api("/api/run", { plan_id: plan.plan_id, dry: isDry, confirm: yes.value, exclude: exclude() }); say(msg, ""); refresh(); }
+      catch (e) { say(msg, e.message, "err"); }
+    };
+    dry.onclick = () => run(true);
+    doIt.onclick = () => run(false);
+    out.replaceChildren(head, ...notes, el("p", { className: "muted", textContent: "Untick anything you want to keep." }), el("div", { className: "row" }, all), listBox,
+      el("div", { className: "row" }, dry, yes, doIt), msg);
+  }
+
+  // ---------------------------------------------------------------- nuke
+  function drawNuke(m) {
+    const checks = C.nuke.map((s) => { const c = el("input", { type: "checkbox", checked: true }); c.dataset.key = s.key; return [c, el("label", { className: "check" }, c, s.label)]; });
+    const out = el("div");
+    const count = el("button", { className: "btn", type: "button", textContent: "Count everything" });
+    count.onclick = async () => {
+      say(out, "Counting everything. This reads your whole account and can take a while...", "muted");
+      try {
+        const r = await api("/api/nuke/plan", { skip: checks.filter(([c]) => !c.checked).map(([c]) => c.dataset.key) });
+        const table = el("table", {}, ...r.steps.map((s) => el("tr", {}, el("td", { textContent: s.title + (s.experimental ? " (experimental)" : "") }), el("td", { textContent: String(s.count) }))));
+        if (!r.total) { out.replaceChildren(el("p", { className: "good", textContent: "Your account is already empty." })); return; }
+        const yes = el("input", { type: "text", placeholder: "type yes" });
+        const user = el("input", { type: "text", placeholder: r.username });
+        const go = el("button", { className: "btn danger", type: "button", textContent: "NUKE", disabled: true });
+        const check = () => (go.disabled = !(yes.value.trim().toLowerCase() === "yes" && user.value.trim().replace(/^@/, "") === r.username));
+        yes.oninput = user.oninput = check;
+        const msg = el("p", { role: "status" });
+        go.onclick = async () => { try { await api("/api/nuke/run", { confirm: yes.value, username: user.value }); refresh(); } catch (e) { say(msg, e.message, "err"); } };
+        out.replaceChildren(table,
+          el("label", { className: "field" }, `Confirmation 1 of 2: ${r.total} things will be deleted for good. Type yes:`, yes),
+          el("label", { className: "field" }, `Confirmation 2 of 2: type your username (${r.username}):`, user),
+          el("p", { className: "muted", textContent: "After you press NUKE it counts down from 5. Press Stop, or close this page, to cancel." }),
+          el("div", { className: "row" }, go), msg);
+      } catch (e) { say(out, e.message, "err"); }
+    };
+    m.replaceChildren(el("h2", { textContent: "NUKE: wipe everything" }),
+      el("p", { className: "warn", textContent: "This wipes your account back to empty and cannot be undone. Download your data first: Instagram app > Settings > Accounts Center > Your information and permissions > Download your information." }),
+      el("p", { className: "muted", textContent: "Untick any step you want to skip." }), ...checks.map((c) => c[1]), el("div", { className: "row" }, count), out);
+  }
+
+  // ---------------------------------------------------------------- AI auto-reply
+  function drawAI(m) {
+    const a = S.ai;
+    const provider = el("select", {}, el("option", { value: "", textContent: "Pick an AI..." }), ...C.providers.map((p) => el("option", { value: p.key, textContent: p.label, selected: p.key === a.provider })));
+    const privacy = el("p", { className: "muted" });
+    const key = el("input", { type: "password", placeholder: a.has_key ? "Saved. Leave empty to keep it." : "Paste your API key" });
+    const claude = el("select", {}, ...C.claude_models.map((x) => el("option", { value: x.id, textContent: x.label, selected: x.id === a.model })));
+    const claudeRow = el("label", { className: "field" }, "Which Claude", claude);
+    const showProvider = () => { const p = C.providers.find((x) => x.key === provider.value); privacy.textContent = p ? p.privacy : ""; claudeRow.hidden = provider.value !== "anthropic"; };
+    provider.onchange = showProvider;
+    const modes = Object.entries(C.modes).map(([k, label]) => { const r = el("input", { type: "radio", name: "mode", value: k, checked: k === a.mode }); return [r, el("label", { className: "check" }, r, label)]; });
+    const wl = el("textarea", { value: a.whitelist.map((n) => "@" + n).join(" ") });
+    const name = el("input", { type: "text", value: a.name, placeholder: "what friends call you" });
+    const style = el("input", { type: "text", value: a.style, placeholder: "lowercase, lots of lol, short replies" });
+    const box = (v, label) => { const c = el("input", { type: "checkbox", checked: !!v }); return [c, el("label", { className: "check" }, c, label)]; };
+    const [tag, tagL] = box(a.tag, "Add a 🤖 at the end of AI replies");
+    const [groups, groupsL] = box(a.groups, "Reply in group chats too");
+    const [instant, instantL] = box(a.instant, "Instant mode (reply as soon as a message arrives)");
+    const saveMsg = el("p", { role: "status" });
+    const save = el("button", { className: "btn", type: "button", textContent: "Save and test" });
+    save.onclick = async () => {
+      say(saveMsg, "Saving and testing...", "muted");
+      try {
+        const r = await api("/api/ai/settings", { provider: provider.value, key: key.value, model: provider.value === "anthropic" ? claude.value : "",
+          mode: modes.find(([r]) => r.checked)[0].value, whitelist: wl.value, name: name.value, style: style.value, tag: tag.checked, groups: groups.checked, instant: instant.checked });
+        key.value = ""; say(saveMsg, r.said ? `Saved. The AI said: ${r.said}` : "Saved.", "good"); await refresh();
+      } catch (e) { say(saveMsg, e.message, "err"); }
+    };
+    const these = el("textarea", { value: (a.these || []).map((n) => "@" + n).join(" "), placeholder: "@friend1 @friend2" });
+    const startMsg = el("p", { role: "status" });
+    const start = el("button", { className: "btn", type: "button", textContent: "Start replying", disabled: a.running });
+    const stop = el("button", { className: "btn ghost", type: "button", textContent: "Stop", disabled: !a.running });
+    start.onclick = async () => { try { await api("/api/ai/start", { these: these.value }); await refresh(); drawMain(); } catch (e) { say(startMsg, e.message, "err"); } };
+    stop.onclick = () => api("/api/ai/stop", {}).then(refresh).then(drawMain);
+    m.replaceChildren(el("h2", { textContent: "AI auto-reply" }),
+      el("p", { className: "muted", textContent: "Answers new DMs the way you text: photos, memes, voice notes and reels included. Only messages that arrive after you press Start get answered." }),
+      el("label", { className: "field" }, "AI", provider), privacy, el("label", { className: "field" }, "API key", key), claudeRow,
+      el("h3", { textContent: "Who it replies to" }), ...modes.map((x) => x[1]),
+      el("label", { className: "field" }, "Whitelist (usernames)", wl),
+      el("h3", { textContent: "Personality" }), el("label", { className: "field" }, "Your name", name), el("label", { className: "field" }, "How you text", style), tagL, groupsL, instantL,
+      el("div", { className: "row" }, save), saveMsg,
+      el("h3", { textContent: "Run it" }), el("label", { className: "field" }, "Only these usernames (for that mode)", these),
+      el("div", { className: "row" }, start, stop), startMsg, el("pre", { className: "log", id: "aiLog", textContent: a.log.join("\n") || "Nothing yet." }));
+    showProvider();
+  }
+
+  // ---------------------------------------------------------------- settings
+  function drawSettings(m) {
+    const mk = (v, label) => { const r = el("input", { type: "radio", name: "speed", value: v, checked: S.speed === v }); r.onchange = () => api("/api/speed", { speed: v }).then(refresh); return el("label", { className: "check" }, r, label); };
+    const names = el("input", { type: "text", placeholder: "@bestfriend @mom" });
+    const msg = el("p", { role: "status" });
+    const keep = (remove) => api("/api/keep", { usernames: names.value, remove }).then(() => { names.value = ""; return refresh().then(() => drawSettings(m)); }).catch((e) => say(msg, e.message, "err"));
+    const add = el("button", { className: "btn", type: "button", textContent: "Add" }); add.onclick = () => keep(false);
+    const rem = el("button", { className: "btn ghost", type: "button", textContent: "Remove" }); rem.onclick = () => keep(true);
+    const out = el("button", { className: "btn ghost", type: "button", textContent: "Log out of this computer" });
+    out.onclick = () => api("/api/logout", {}).then(refresh);
+    m.replaceChildren(el("h2", { textContent: "Settings" }),
+      el("h3", { textContent: "Speed" }), mk("safe", "Safe (recommended): human-like breaks between actions"), mk("fast", "Fast: shorter breaks, more likely to hit Instagram's 'Action Blocked'"),
+      el("h3", { textContent: "Keep-list" }), el("p", { className: "muted", textContent: "No tool, not even the nuke, will ever unfollow or remove these people." }),
+      el("p", { textContent: S.keep.length ? S.keep.map((n) => "@" + n).join(", ") : "Empty." }), names, el("div", { className: "row" }, add, rem), msg,
+      el("h3", { textContent: "Account" }), el("div", { className: "row" }, out));
+  }
+
+  // ---------------------------------------------------------------- live state
+  $("stopBtn").onclick = () => api("/api/stop", {});
+  let shown = "", dismissed = "";
+  $("closeBtn").onclick = () => { dismissed = S.job ? S.job.id : ""; $("job").hidden = true; };
+  async function refresh() {
+    try { S = await api("/api/state"); } catch { return; }
+    const logged = S.logged_in;
+    $("login").hidden = logged; $("app").hidden = !logged;
+    $("who").replaceChildren(...(logged ? [el("span", { className: "pill" + (S.preview ? " preview" : ""), textContent: S.preview ? "pretend account" : "@" + S.username }), el("span", { className: "pill", textContent: "speed: " + S.speed })] : []));
+    if (!logged) {
+      $("remembered").hidden = !S.has_session;
+      $("codeBox").hidden = !S.prompt; $("codeQ").textContent = S.prompt || "";
+      if (S.login_error) say($("loginMsg"), S.login_error, "err");
+      else if (S.logging_in && !S.prompt) say($("loginMsg"), "Logging in...", "muted");
+    } else if (shown !== "app") { shown = "app"; drawNav(); drawMain(); }
+    if (!logged) shown = "";
+    const j = S.job;
+    $("job").hidden = !j || j.id === dismissed;
+    if (j) {
+      $("closeBtn").hidden = j.running;
+      $("jobTitle").textContent = (j.dry ? "Dry run: " : "") + j.title;
+      $("jobCount").textContent = j.total ? `${j.n} / ${j.total}` : "";
+      $("jobBar").style.width = j.total ? `${Math.round((100 * j.n) / j.total)}%` : "0";
+      $("jobLog").textContent = j.lines.join("\n");
+      $("jobLog").scrollTop = $("jobLog").scrollHeight;
+      $("jobResult").textContent = j.result || "";
+      $("stopBtn").hidden = !j.running;
+    }
+    const log = $("aiLog"); if (log) log.textContent = S.ai.log.join("\n") || "Nothing yet.";
+  }
+  (async () => {
+    C = await api("/api/catalog");
+    await refresh();
+    setInterval(refresh, 1000);
+  })();
+})();
+</script>
+</body>
+</html>

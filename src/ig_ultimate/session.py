@@ -42,9 +42,9 @@ def login(
     username: str,
     ask: Callable[[str], str] = input,
     ask_secret: Callable[[str], str] = getpass.getpass,
-    make_client: Callable[[], Client] = new_client,
+    make_client: Callable[[], Client] | None = None,
 ):
-    cl = make_client()
+    cl = (make_client or new_client)()
     saved = paths.read_json(session_file(), None)
     if saved:
         cl.set_settings(saved)
