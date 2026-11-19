@@ -455,6 +455,23 @@ def run(preview: bool = False) -> int:
         if not accept_notice(cfg):
             console.print("No problem. Nothing was done.")
             return 0
+        if not preview:
+            config.save(cfg)
+            start = menu(
+                "How do you want to start?",
+                [
+                    ("1", "Log in to my Instagram"),
+                    ("2", "Try everything on a pretend account first (no login, nothing real changes)"),
+                ],
+                back="Exit",
+            )
+            if start == "2":
+                import os
+
+                from . import paths
+
+                os.environ["IG_ULTIMATE_HOME"] = str(paths.data_dir() / "preview")
+                preview = True
         if preview:
             from .fake import FakeClient
 
