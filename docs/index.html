@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- This page can't send your data anywhere: connect-src 'none' blocks every upload and network request from scripts. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>IG Ultimate Tool: who doesn't follow you back, and a free account cleaner</title>
+<meta name="description" content="Find out who doesn't follow you back without logging in, then clean up followers, chats, posts, likes and more with a free, open-source tool that runs on your own computer.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous" defer></script>
+<style>
+:root {
+  --cloud: #EEF2F7;
+  --paper: #FFFFFF;
+  --ink: #18212F;
+  --slate: #5B6778;
+  --rule: #CBD3DE;
+  --eraser: #FF4F81;
+  --eraser-soft: #FFE1EA;
+  --nuke: #D7263D;
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --measure: 66ch;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--cloud); color: var(--ink); font: 1.0625rem/1.6 var(--body); }
+a { color: inherit; text-decoration-thickness: .08em; text-underline-offset: .18em; }
+a:hover { color: var(--eraser); }
+:focus-visible { outline: 3px solid var(--eraser); outline-offset: 3px; border-radius: 4px; }
+.wrap { width: min(1120px, 100% - 2rem); margin-inline: auto; }
+
+/* header */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.1rem; }
+.brand { font: 800 1.15rem/1 var(--display); letter-spacing: -.01em; text-decoration: none; }
+h1, h2, .big { text-wrap: balance; }
+.top nav { display: flex; gap: 1.1rem; font-size: .95rem; }
+.top nav a { text-decoration: none; color: var(--slate); }
+.top nav a:hover { color: var(--ink); }
+@media (max-width: 640px) { .top nav a:not(.gh) { display: none; } }
+
+/* hero */
+.hero { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 3rem; padding-block: 2.5rem 4rem; align-items: start; }
+@media (max-width: 880px) {
+  .hero { grid-template-columns: 1fr; gap: 2rem; }
+  .ledger li:nth-child(n + 7) { display: none; }  /* phones: the tool first, a shorter example after it */
+}
+h1 { font: 800 clamp(2.6rem, 6.4vw, 4.6rem)/.98 var(--display); letter-spacing: -.035em; margin: 0 0 1.2rem; max-width: 12ch; }
+.lede { font-size: 1.2rem; max-width: 44ch; margin: 0 0 1.8rem; color: var(--ink); }
+.drop {
+  display: grid; gap: .35rem; place-items: center; text-align: center; padding: 2rem 1.25rem;
+  background: var(--paper); border: 2px dashed var(--rule); border-radius: 20px; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.drop:hover, .drop.over { border-color: var(--eraser); background: #fff8fa; }
+.drop strong { font: 700 1.15rem/1.2 var(--display); }
+.drop span { color: var(--slate); font-size: .95rem; }
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.drop:focus-within { outline: 3px solid var(--eraser); outline-offset: 3px; }
+.row { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; align-items: center; margin-top: 1rem; }
+.btn {
+  font: 700 1rem/1 var(--body); padding: .85rem 1.25rem; border-radius: 999px; border: 2px solid var(--ink);
+  background: var(--ink); color: var(--paper); cursor: pointer; text-decoration: none; display: inline-block;
+}
+.btn:hover { background: var(--eraser); border-color: var(--eraser); color: var(--paper); }
+.btn.ghost { background: transparent; color: var(--ink); }
+.btn.ghost:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.private { font-size: .92rem; color: var(--slate); margin: 0; }
+details.how { margin-top: 1.25rem; max-width: var(--measure); }
+details.how summary { cursor: pointer; font-weight: 700; }
+details.how ol { padding-left: 1.25rem; }
+.status { margin-top: 1rem; font-weight: 700; min-height: 1.6em; }
+.status.err { color: var(--nuke); }
+
+/* the struck-through list (decorative) */
+.ledger { background: var(--paper); border-radius: 20px; padding: 1.5rem 1.75rem; box-shadow: 0 1px 0 var(--rule), 0 24px 48px -32px rgba(24,33,47,.35); }
+.ledger p { margin: 0 0 .75rem; color: var(--slate); font-size: .92rem; }
+.ledger ul { list-style: none; margin: 0; padding: 0; font: 600 1.25rem/2.05 var(--display); }
+.ledger li { position: relative; width: fit-content; }
+.ledger li.cut::after {
+  content: ""; position: absolute; left: -.15em; right: -.15em; top: 52%; height: .16em; background: var(--eraser);
+  border-radius: 2px; transform-origin: left; transform: scaleX(0); animation: strike .45s cubic-bezier(.6,0,.2,1) forwards;
+}
+.ledger li.cut { color: var(--slate); transition: color .3s; }
+@keyframes strike { to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .ledger li.cut::after { animation: none; transform: scaleX(1); } html { scroll-behavior: auto; } }
+
+/* results */
+.results { margin-top: 2rem; background: var(--paper); border-radius: 20px; padding: 1.5rem; }
+.results[hidden] { display: none; }
+.tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.tab { font: 700 .98rem/1 var(--body); padding: .65rem 1rem; border-radius: 999px; border: 2px solid var(--rule); background: transparent; color: var(--ink); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.big { font: 800 clamp(2.2rem, 5vw, 3.2rem)/1 var(--display); letter-spacing: -.03em; margin: .25rem 0 .5rem; }
+.filter { width: 100%; max-width: 22rem; font: inherit; padding: .6rem .8rem; border: 2px solid var(--rule); border-radius: 12px; margin: .25rem 0 1rem; }
+.names { list-style: none; padding: 0; margin: 0; columns: 3 12rem; column-gap: 2rem; font: 500 1.02rem/1.9 var(--display); }
+.names a { text-decoration: none; }
+.names a:hover { text-decoration: line-through; text-decoration-color: var(--eraser); text-decoration-thickness: .14em; }
+.next { margin: 1.25rem 0 0; color: var(--slate); }
+
+/* sections */
+section.block { padding-block: 4.5rem; border-top: 1px solid var(--rule); }
+h2 { font: 800 clamp(1.9rem, 4vw, 2.8rem)/1.05 var(--display); letter-spacing: -.025em; margin: 0 0 .75rem; max-width: 20ch; }
+.intro { max-width: var(--measure); color: var(--slate); margin: 0 0 2.5rem; font-size: 1.1rem; }
+
+/* tools ledger */
+.tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr)); gap: 0 3.5rem; }
+.tool { display: grid; grid-template-columns: 9.5rem 1fr; gap: 1rem; padding-block: 1.15rem; border-bottom: 1px solid var(--rule); }
+@media (max-width: 520px) { .tool { grid-template-columns: 1fr; gap: .25rem; } }
+.tool h3 { font: 700 1.2rem/1.3 var(--display); margin: 0; }
+.tool p { margin: 0; }
+.tool.nuke h3 { color: var(--nuke); }
+
+/* AI chat sample */
+.ai { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 3rem; align-items: center; }
+@media (max-width: 880px) { .ai { grid-template-columns: 1fr; } }
+.chat { background: var(--paper); border-radius: 24px; padding: 1.5rem; display: grid; gap: .6rem; max-width: 26rem; }
+.bubble { max-width: 80%; padding: .6rem .95rem; border-radius: 20px; line-height: 1.35; }
+.them { background: var(--cloud); justify-self: start; border-bottom-left-radius: 6px; }
+.you { background: var(--ink); color: var(--paper); justify-self: end; border-bottom-right-radius: 6px; }
+.media { font-style: italic; color: var(--slate); }
+.ai ul { padding-left: 1.2rem; margin: 0; }
+.ai li { margin-bottom: .45rem; }
+
+/* honesty */
+.honest { margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); gap: 2rem 3.5rem; }
+.honest h3 { font: 700 1.25rem/1.3 var(--display); margin: 0 0 .5rem; }
+.honest ul { margin: 0; padding-left: 1.2rem; }
+.honest li { margin-bottom: .55rem; max-width: 52ch; }
+.honest .risk h3 { color: var(--nuke); }
+
+/* steps */
+.steps { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; gap: 2.25rem; max-width: 46rem; }
+.steps > li { counter-increment: s; display: grid; grid-template-columns: 3.25rem 1fr; gap: 1rem; }
+.steps > li::before { content: counter(s); font: 800 2.6rem/1 var(--display); color: var(--eraser); }
+.steps h3 { font: 700 1.3rem/1.3 var(--display); margin: .2rem 0 .5rem; }
+.steps p { margin: 0 0 .75rem; }
+.os { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .75rem; }
+.ospanel[hidden] { display: none; }
+code { font-size: .92em; background: var(--paper); padding: .1em .35em; border-radius: 6px; border: 1px solid var(--rule); }
+
+/* faq */
+.faq { max-width: var(--measure); }
+.faq details { border-bottom: 1px solid var(--rule); padding-block: 1rem; }
+.faq summary { cursor: pointer; font: 700 1.12rem/1.4 var(--display); }
+.faq p { margin: .75rem 0 0; }
+
+footer { border-top: 1px solid var(--rule); padding-block: 2rem 3rem; color: var(--slate); font-size: .95rem; }
+footer p { max-width: var(--measure); margin: 0 0 .5rem; }
+</style>
+</head>
+<body>
+
+<header class="wrap top">
+  <a class="brand" href="#top">IG Ultimate Tool</a>
+  <nav aria-label="Sections">
+    <a href="#check">Checker</a><a href="#tools">Tools</a><a href="#start">Download</a><a href="#faq">Questions</a>
+    <a class="gh" href="https://github.com/soics/ig-ultimate-tool">Source code</a>
+  </nav>
+</header>
+
+<main id="top">
+  <div class="wrap hero" id="check">
+    <div>
+      <h1>Who doesn't follow you back?</h1>
+      <p class="lede">Drop the data file Instagram gives you and see the list in seconds. It's read right here in your browser: nothing gets uploaded, and you never type your password.</p>
+
+      <label class="drop" id="drop">
+        <strong>Choose your Instagram data file</strong>
+        <span>the .zip Instagram emails you, or the followers / following files inside it</span>
+        <input type="file" id="file" accept=".zip,.json,.html" multiple>
+      </label>
+      <div class="row">
+        <button class="btn ghost" type="button" id="sample">Try it with sample data</button>
+        <p class="private">This page is locked so it can't send anything over the internet.</p>
+      </div>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+
+      <details class="how">
+        <summary>How do I get my Instagram data file?</summary>
+        <ol>
+          <li>In the Instagram app, open your profile, tap the menu, then <b>Accounts Center</b>.</li>
+          <li>Tap <b>Your information and permissions</b> &gt; <b>Download your information</b> &gt; <b>Download or transfer information</b>.</li>
+          <li>Pick your account, choose <b>Some of your information</b>, tick <b>Followers and following</b>.</li>
+          <li>Choose <b>Download to device</b>, format <b>JSON</b>, then <b>Create files</b>.</li>
+          <li>Instagram emails you when it's ready (often within an hour). Download the .zip and drop it above.</li>
+        </ol>
+        <p class="private">Menu names change now and then; if yours look different, search the app's settings for "Download your information".</p>
+      </details>
+
+      <div class="results" id="results" hidden>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" id="tab-not" aria-selected="true" type="button">They don't follow you back</button>
+          <button class="tab" role="tab" id="tab-fans" aria-selected="false" type="button">You don't follow them back</button>
+        </div>
+        <p class="big" id="count"></p>
+        <input class="filter" id="filter" type="search" placeholder="Search a name" aria-label="Search the list">
+        <ul class="names" id="names"></ul>
+        <div class="row">
+          <button class="btn ghost" type="button" id="copy">Copy the list</button>
+        </div>
+        <p class="next">Want to unfollow them in one go instead of one by one? <a href="#start">Get the free tool</a>: it shows you this exact list first and only starts when you type yes.</p>
+      </div>
+    </div>
+
+    <div class="ledger" aria-hidden="true">
+      <p>Your following list, after a clean-up</p>
+      <ul id="ledger">
+        <li>@mia_rose</li><li>@gym.bro.daily</li><li>@luna.sky</li><li>@crypto_deals_4u</li><li>@jayden.k</li>
+        <li>@ex.from.2019</li><li>@noah_b</li><li>@random.giveaway</li><li>@ava_eats</li><li>@meme.page.48213</li>
+      </ul>
+    </div>
+  </div>
+
+  <section class="block" id="tools">
+    <div class="wrap">
+      <h2>Then let it do the boring part</h2>
+      <p class="intro">IG Ultimate Tool is a free program you run on your own computer. Pick a job, see exactly what it will touch, and it works through the list at a human pace while you do something else.</p>
+      <div class="tools">
+        <div class="tool"><h3>Followers</h3><p>Unfollow people who don't follow you back, everyone, or a list you paste. Remove followers you don't follow back, or all of them. Keep a list of people it never touches.</p></div>
+        <div class="tool"><h3>Chats</h3><p>Delete every chat with no messages in the last 4, 6 or 12 months (you choose), pick chats to delete, and leave old group chats, one or all.</p></div>
+        <div class="tool"><h3>Posts</h3><p>Archive old posts and reels (you can bring them back) or delete them for good. Clear stories and highlights.</p></div>
+        <div class="tool"><h3>Footprint</h3><p>Unlike everything you ever liked, unsave all saved posts, wipe comments on your posts, and remove yourself from photos you're tagged in.</p></div>
+        <div class="tool"><h3>Profile</h3><p>Clear your bio, link and name, remove your profile picture, switch to private.</p></div>
+        <div class="tool nuke"><h3>Nuke</h3><p>Everything above in a safe order, for an account that looks brand new. It asks twice, then counts down from 5 so you can still back out.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap ai">
+      <div>
+        <h2>Replies that sound like you</h2>
+        <p class="intro">Turn on AI auto-reply and it answers DMs the way you text: photos, memes, voice notes and reels included. Free with a Groq key.</p>
+        <ul>
+          <li>Reply to everyone, only your whitelist, or only usernames you paste.</li>
+          <li>One message per reply, and it steps back the moment you answer yourself.</li>
+          <li>If someone sincerely asks whether it's a bot, it won't lie.</li>
+          <li>Works with Groq, Gemini, OpenRouter, Ollama, OpenAI, Claude, Claude Code and Codex.</li>
+        </ul>
+      </div>
+      <div class="chat" aria-label="Example conversation">
+        <div class="bubble them media">sent a meme: a cat falling off a table</div>
+        <div class="bubble you">LMAOOO this is me every monday 😭</div>
+        <div class="bubble them media">voice note: "you still coming saturday?"</div>
+        <div class="bubble you">yeah for sure, what time again?</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2>What it does with your account, honestly</h2>
+      <div class="honest">
+        <div>
+          <h3>What stays private</h3>
+          <ul>
+            <li>It runs on your computer and talks only to Instagram, plus the AI you pick if you turn auto-reply on.</li>
+            <li>Your password is typed hidden and never saved. Only Instagram's login session is kept, readable by you alone.</li>
+            <li>No accounts, no tracking, no servers of ours. Every line of code is public on GitHub.</li>
+          </ul>
+        </div>
+        <div class="risk">
+          <h3>What can go wrong</h3>
+          <ul>
+            <li>Automating an account is against Instagram's terms. Instagram can pause actions for a day or two ("Action Blocked"); the tool stops by itself when that happens.</li>
+            <li>Older, real accounts are far lower risk than brand-new ones. Fast mode is faster and riskier.</li>
+            <li>Deleted posts, chats and comments don't come back. Download your data first.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="start">
+    <div class="wrap">
+      <h2>Start it in three steps</h2>
+      <p class="intro">No installing Python, no typing commands. The first start sets itself up in a minute or two.</p>
+      <ol class="steps">
+        <li>
+          <div>
+            <h3>Download</h3>
+            <p>One file works for Windows, Mac and Linux. Unzip it anywhere.</p>
+            <a class="btn" href="https://github.com/soics/ig-ultimate-tool/archive/refs/heads/main.zip">Download IG Ultimate Tool (.zip)</a>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Open it</h3>
+            <div class="os" role="tablist" aria-label="Your computer">
+              <button class="tab" role="tab" data-os="win" type="button">Windows</button>
+              <button class="tab" role="tab" data-os="mac" type="button">Mac</button>
+              <button class="tab" role="tab" data-os="linux" type="button">Linux</button>
+            </div>
+            <div class="ospanel" data-panel="win"><p>Double-click <code>Start-Windows.bat</code>. If a blue box says "Windows protected your PC", click <b>More info</b>, then <b>Run anyway</b>. Windows shows that for any new file from the internet.</p></div>
+            <div class="ospanel" data-panel="mac" hidden><p>Right-click <code>Start-Mac.command</code>, choose <b>Open</b>, then <b>Open</b> again. Only the first time; after that a double-click is enough.</p></div>
+            <div class="ospanel" data-panel="linux" hidden><p>Open a terminal in the folder and run <code>./start-linux.sh</code>.</p></div>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Follow the screen</h3>
+            <p>Type <code>I agree</code>, then try everything on a pretend account first, or log in when you're ready. Type the number of what you want; Ctrl+C always goes back.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="block" id="faq">
+    <div class="wrap faq">
+      <h2>Questions</h2>
+      <details><summary>Is this made by Instagram?</summary><p>No. It's an independent open-source project, not affiliated with Instagram or Meta.</p></details>
+      <details><summary>Why not just use a website that does this?</summary><p>Websites that log into your Instagram hold your account on their servers. This tool never leaves your computer, and you can read every line of it.</p></details>
+      <details><summary>Will I get banned?</summary><p>Very unlikely on an aged, real account at the normal speed. You may see Instagram's temporary "Action Blocked" after lots of actions; the tool stops, and continues where it left off after you wait a day or two.</p></details>
+      <details><summary>Does it work with two-factor login?</summary><p>Yes, it asks for your code. If Instagram asks "Was this you?", approve it in the app, wait 15 minutes, and try again.</p></details>
+      <details><summary>What does the checker on this page do with my file?</summary><p>It opens the file in your browser's memory, compares your followers and following, and shows the result. The page's security settings block it from making any network request, so your file can't go anywhere.</p></details>
+      <details><summary>Something doesn't work</summary><p>Open an issue on <a href="https://github.com/soics/ig-ultimate-tool/issues">GitHub</a> and say what you clicked and what you saw. Never post your session file or password.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>IG Ultimate Tool is free and open source under the MIT license, with no warranty. Not affiliated with, endorsed by, or connected to Instagram or Meta.</p>
+    <p><a href="https://github.com/soics/ig-ultimate-tool">Source code on GitHub</a></p>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const status = $("status");
+  let lists = { not: [], fans: [] }, current = "not";
+
+  // One orchestrated moment: the junk accounts in the example list get crossed off.
+  const junk = ["@gym.bro.daily", "@crypto_deals_4u", "@ex.from.2019", "@random.giveaway", "@meme.page.48213"];
+  [...$("ledger").children].filter((li) => junk.includes(li.textContent)).forEach((li, i) => {
+    setTimeout(() => li.classList.add("cut"), 500 + i * 320);
+  });
+
+  // ---- reading Instagram's export (JSON in old and new layouts, or HTML)
+  const nameOf = (entry) => {
+    const s = (entry.string_list_data || [])[0] || {};
+    if (s.value) return s.value;
+    if (entry.title) return entry.title;
+    const m = String(s.href || "").match(/instagram\.com\/(?:_u\/)?([^/?#]+)/);
+    return m ? m[1] : "";
+  };
+  const fromJson = (data) => {
+    const arr = Array.isArray(data) ? data
+      : data.relationships_followers || data.relationships_following || [];
+    return arr.map(nameOf).filter(Boolean);
+  };
+  const fromHtml = (text) => {
+    const doc = new DOMParser().parseFromString(text, "text/html");
+    return [...doc.querySelectorAll('a[href*="instagram.com"]')]
+      .map((a) => (a.textContent || "").trim()).filter((t) => t && !t.includes(" "));
+  };
+  const kind = (path) => {
+    const base = path.split("/").pop().toLowerCase();
+    if (/^followers(_\d+)?\.(json|html)$/.test(base)) return "followers";
+    if (/^following\.(json|html)$/.test(base)) return "following";
+    return null;
+  };
+  const parse = (path, text) => (path.toLowerCase().endsWith(".html") ? fromHtml(text) : fromJson(JSON.parse(text)));
+
+  async function readFiles(files) {
+    const got = { followers: [], following: [] };
+    let seen = { followers: false, following: false };
+    for (const file of files) {
+      if (file.name.toLowerCase().endsWith(".zip")) {
+        if (!window.JSZip) throw new Error("The zip reader didn't load. Check your connection and refresh, or drop the two files from inside the zip instead.");
+        const zip = await JSZip.loadAsync(file);
+        for (const path of Object.keys(zip.files)) {
+          const k = kind(path);
+          if (!k) continue;
+          got[k].push(...parse(path, await zip.files[path].async("string")));
+          seen[k] = true;
+        }
+      } else {
+        const k = kind(file.name);
+        if (!k) continue;
+        got[k].push(...parse(file.name, await file.text()));
+        seen[k] = true;
+      }
+    }
+    if (!seen.followers || !seen.following) {
+      throw new Error("Couldn't find both your followers and following lists. Make sure you requested 'Followers and following' in JSON format.");
+    }
+    return got;
+  }
+
+  function show(got) {
+    const followers = new Set(got.followers.map((n) => n.toLowerCase()));
+    const following = new Set(got.following.map((n) => n.toLowerCase()));
+    lists.not = [...following].filter((n) => !followers.has(n)).sort();
+    lists.fans = [...followers].filter((n) => !following.has(n)).sort();
+    status.classList.remove("err");
+    status.textContent = `Read ${followers.size} followers and ${following.size} accounts you follow.`;
+    $("results").hidden = false;
+    select("not");
+    $("results").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  }
+
+  function select(which) {
+    current = which;
+    $("tab-not").setAttribute("aria-selected", which === "not");
+    $("tab-fans").setAttribute("aria-selected", which === "fans");
+    render();
+  }
+
+  function render() {
+    const q = $("filter").value.trim().toLowerCase().replace(/^@/, "");
+    const names = lists[current].filter((n) => n.includes(q));
+    const total = lists[current].length;
+    $("count").textContent = current === "not"
+      ? `${total} ${total === 1 ? "person doesn't" : "people don't"} follow you back`
+      : `You don't follow back ${total} ${total === 1 ? "person" : "people"}`;
+    const ul = $("names");
+    ul.replaceChildren(...names.map((n) => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.href = `https://www.instagram.com/${encodeURIComponent(n)}/`;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = "@" + n;
+      li.append(a);
+      return li;
+    }));
+  }
+
+  async function handle(files) {
+    status.classList.remove("err");
+    status.textContent = "Reading your file...";
+    try {
+      show(await readFiles([...files]));
+    } catch (e) {
+      status.classList.add("err");
+      status.textContent = e instanceof SyntaxError ? "That file isn't valid JSON. Request your data again in JSON format." : e.message;
+    }
+  }
+
+  const drop = $("drop");
+  $("file").addEventListener("change", (e) => e.target.files.length && handle(e.target.files));
+  ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", (e) => e.dataTransfer.files.length && handle(e.dataTransfer.files));
+
+  $("sample").addEventListener("click", () => show({
+    followers: ["luna.sky", "jayden.k", "ava_eats", "noah_b", "zoe.art", "kai.waves", "nina.blue"],
+    following: ["luna.sky", "jayden.k", "ava_eats", "noah_b", "gym.bro.daily", "crypto_deals_4u", "ex.from.2019", "random.giveaway"],
+  }));
+  $("tab-not").addEventListener("click", () => select("not"));
+  $("tab-fans").addEventListener("click", () => select("fans"));
+  $("filter").addEventListener("input", render);
+  $("copy").addEventListener("click", async () => {
+    const text = lists[current].map((n) => "@" + n).join("\n");
+    try { await navigator.clipboard.writeText(text); $("copy").textContent = "Copied"; }
+    catch { $("copy").textContent = "Couldn't copy: select the names instead"; }
+    setTimeout(() => ($("copy").textContent = "Copy the list"), 2000);
+  });
+
+  // Open the right "how to open it" instructions for this computer.
+  const tabs = [...document.querySelectorAll(".os .tab")];
+  const pickOs = (os) => {
+    tabs.forEach((t) => t.setAttribute("aria-selected", t.dataset.os === os));
+    document.querySelectorAll(".ospanel").forEach((p) => (p.hidden = p.dataset.panel !== os));
+  };
+  tabs.forEach((t) => t.addEventListener("click", () => pickOs(t.dataset.os)));
+  const ua = navigator.userAgent;
+  pickOs(/Mac/i.test(ua) && !/iPhone|iPad/i.test(ua) ? "mac" : /Linux/i.test(ua) && !/Android/i.test(ua) ? "linux" : "win");
+})();
+</script>
+</body>
+</html>

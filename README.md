@@ -6,6 +6,8 @@ Unfollow people who don't follow you back, delete chats you haven't touched in m
 
 No modded Instagram app, no paying a social media manager, no giving your password to a website. Every line of code is right here for anyone to read.
 
+**Just want to know who doesn't follow you back?** Use the [no-login checker on the website](https://soics.github.io/ig-ultimate-tool/): drop the data file Instagram gives you, and it's read in your browser without uploading anything.
+
 [![tests](https://github.com/soics/ig-ultimate-tool/actions/workflows/ci.yml/badge.svg)](https://github.com/soics/ig-ultimate-tool/actions/workflows/ci.yml) ![license: MIT](https://img.shields.io/badge/license-MIT-blue)
 
 ---
