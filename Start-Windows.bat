@@ -17,6 +17,6 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-uv run --quiet ig-ultimate %*
+uv run --quiet --locked ig-ultimate %*
 echo.
 pause

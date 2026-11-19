@@ -16,6 +16,7 @@ import threading
 import time
 import webbrowser
 from collections import deque
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from types import SimpleNamespace
@@ -178,6 +179,7 @@ class JobUI:
 class WebApp:
     def __init__(self, preview: bool = False):
         self.cfg = config.load()
+        self._real_home = os.environ.get("IG_ULTIMATE_HOME")
         self.preview = False
         self.cl = None
         self.username = ""
@@ -252,12 +254,26 @@ class WebApp:
     def use_preview(self):
         from .fake import FakeClient
 
+        if self.cl is not None and not self.preview:
+            raise ValueError("Log out of your real account first.")
         os.environ["IG_ULTIMATE_HOME"] = str(paths.data_dir() / "preview")
         self.preview, self.cl, self.username = True, FakeClient(), "you"
+
+    def _leave_preview(self):
+        """Back to the real account's folder, settings and normal pacing."""
+        if not self.preview:
+            return
+        if self._real_home is None:
+            os.environ.pop("IG_ULTIMATE_HOME", None)
+        else:
+            os.environ["IG_ULTIMATE_HOME"] = self._real_home
+        self.preview, self.cl, self.username = False, None, ""
+        self.cfg = config.load()
 
     def start_login(self, username: str, password: str):
         if self.logging_in:
             raise ValueError("Already logging in.")
+        self._leave_preview()
         self.logging_in, self.login_error = True, ""
 
         def ask(question: str) -> str:
@@ -285,8 +301,9 @@ class WebApp:
         threading.Thread(target=work, daemon=True).start()
 
     def logout(self):
-        if not self.preview:
-            session.logout()
+        if self.preview:
+            return self._leave_preview()
+        session.logout()
         self.cl, self.username = None, ""
 
     # ------------------------------------------------------------ plans & jobs
@@ -433,8 +450,11 @@ class WebApp:
         same = provider == a.get("provider")
         s = {
             "provider": provider,
-            "base_url": body.get("base_url") or p.get("base_url", ""),
-            "key": body.get("key") or (a.get("key", "") if same else ""),
+            # Only the "custom" provider takes a URL, so a saved key can't be sent anywhere else.
+            "base_url": (body.get("base_url") or a.get("base_url", ""))
+            if provider == "custom"
+            else p.get("base_url", ""),
+            "key": body.get("key") or (a.get("key", "") if same and not body.get("base_url") else ""),
             "model": body.get("model") or "",
             "stt_model": "",
         }
@@ -536,11 +556,12 @@ def page() -> bytes:
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "IGUltimateTool"
+    timeout = 10  # a stuck or half-open connection can't hold a thread forever
 
     def log_message(self, *args):  # quiet, and never prints the token
         pass
 
-    def _send(self, code: int, body, ctype: str = "application/json") -> None:
+    def _send(self, code: int, body, ctype: str = "application/json", cookie: str = "") -> None:
         data = body if isinstance(body, bytes) else json.dumps(body).encode()
         self.send_response(code)
         for key, value in (
@@ -552,6 +573,8 @@ class Handler(BaseHTTPRequestHandler):
             ("Referrer-Policy", "no-referrer"),
         ):
             self.send_header(key, value)
+        if cookie:
+            self.send_header("Set-Cookie", cookie)
         self.end_headers()
         self.wfile.write(data)
 
@@ -566,10 +589,25 @@ class Handler(BaseHTTPRequestHandler):
         if not self._allowed():
             return self._send(403, {"error": "forbidden"})
         if url.path == "/":
-            token = parse_qs(url.query).get("t", [""])[0]
-            if not hmac.compare_digest(token, self.server.token):  # type: ignore[attr-defined]
-                return self._send(403, b"Open the link shown in the IG Ultimate Tool window.", "text/plain")
-            return self._send(200, page(), "text/html")
+            # The link the app opens carries a one-time code (other users could see it in the browser's
+            # command line). It is swapped for a browser-only cookie; the API token lives in the page.
+            srv = self.server
+            boot = parse_qs(url.query).get("t", [""])[0]
+            fresh = bool(srv.boot) and hmac.compare_digest(boot, srv.boot)  # type: ignore[attr-defined]
+            jar = SimpleCookie(self.headers.get("Cookie", ""))
+            known = "igut" in jar and hmac.compare_digest(jar["igut"].value, srv.cookie)  # type: ignore[attr-defined]
+            if not (fresh or known):
+                return self._send(
+                    403,
+                    b"This link was already used. Use the tab that's already open, "
+                    b"or restart IG Ultimate Tool.",
+                    "text/plain",
+                )
+            if fresh:
+                srv.boot = ""  # type: ignore[attr-defined]
+            html = page().replace(b"__TOKEN__", srv.token.encode())  # type: ignore[attr-defined]
+            cookie = f"igut={srv.cookie}; HttpOnly; SameSite=Strict; Path=/"  # type: ignore[attr-defined]
+            return self._send(200, html, "text/html", cookie=cookie)
         if not self._authed():
             return self._send(403, {"error": "forbidden"})
         app: WebApp = self.server.app  # type: ignore[attr-defined]
@@ -584,7 +622,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(403, {"error": "forbidden"})
         if "application/json" not in self.headers.get("Content-Type", ""):
             return self._send(415, {"error": "JSON only"})
-        length = int(self.headers.get("Content-Length") or 0)
+        raw_length = self.headers.get("Content-Length") or "0"
+        if not raw_length.isdigit():
+            return self._send(400, {"error": "bad request"})
+        length = int(raw_length)
         if length > MAX_BODY:
             return self._send(413, {"error": "too large"})
         try:
@@ -604,7 +645,9 @@ class Handler(BaseHTTPRequestHandler):
 def make_server(preview: bool = False, port: int = 0) -> ThreadingHTTPServer:
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     real_port = server.server_address[1]
-    server.token = secrets.token_urlsafe(24)  # type: ignore[attr-defined]
+    server.token = secrets.token_urlsafe(24)  # type: ignore[attr-defined]  # API token, only inside the page
+    server.boot = secrets.token_urlsafe(16)  # type: ignore[attr-defined]  # one-time code in the opened link
+    server.cookie = secrets.token_urlsafe(24)  # type: ignore[attr-defined]  # lets the opened tab reload
     server.hosts = {f"127.0.0.1:{real_port}", f"localhost:{real_port}"}  # type: ignore[attr-defined]
     server.app = WebApp(preview=preview)  # type: ignore[attr-defined]
     return server
@@ -612,7 +655,7 @@ def make_server(preview: bool = False, port: int = 0) -> ThreadingHTTPServer:
 
 def serve(preview: bool = False, open_browser: bool = True) -> int:
     server = make_server(preview)
-    url = f"http://127.0.0.1:{server.server_address[1]}/?t={server.token}"  # type: ignore[attr-defined]
+    url = f"http://127.0.0.1:{server.server_address[1]}/?t={server.boot}"  # type: ignore[attr-defined]
     print("\nIG Ultimate Tool is open in your web browser.")
     print(f"If it didn't open, copy this link into your browser (it only works on this computer):\n  {url}")
     print("Keep this window open while you use it. Press Ctrl+C here to quit.\n")

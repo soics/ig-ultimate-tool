@@ -7,6 +7,7 @@ only by the owner, because session.json is full access to the Instagram account.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import tempfile
@@ -17,8 +18,24 @@ from platformdirs import user_data_dir
 
 def data_dir() -> Path:
     root = Path(os.environ.get("IG_ULTIMATE_HOME") or user_data_dir("IG Ultimate Tool", appauthor=False))
-    root.mkdir(parents=True, exist_ok=True)
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with contextlib.suppress(OSError):  # owner-only, also for folders an older version created
+        root.chmod(0o700)
     return root
+
+
+def write_text(path: Path, text: str) -> None:
+    """Owner-only, all-or-nothing text file (same guarantees as write_json)."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".tmp-")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 def read_json(path: Path, default):
@@ -34,7 +51,7 @@ def read_json(path: Path, default):
 
 def write_json(path: Path, data) -> None:
     path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".tmp-")  # mkstemp creates the file as 0600
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:

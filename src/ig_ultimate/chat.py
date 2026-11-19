@@ -144,9 +144,12 @@ class Bot:
             return False
         if t.is_group and not self.a.get("groups"):
             return False
-        sender = str(new[-1].user_id)
-        if self.allowed is not None and sender not in self.allowed:
-            return False
+        if self.allowed is not None:
+            if any(str(m.user_id) not in self.allowed for m in new):
+                return False  # someone not on your list is talking here (e.g. in a group): stay out
+            msgs = [
+                m for m in msgs if self._mine(m) or str(m.user_id) in self.allowed
+            ]  # outsiders never reach the AI
         if not self._room(tid):
             self.log("Hourly reply limit reached for this chat, skipping for now.")
             return False
@@ -437,9 +440,10 @@ def agent(app, a: dict) -> None:
     from .cli import ask, console
 
     console.print(
-        "Claude Code and Codex can read files. Pick ONE folder they may use (e.g. a 'bot-files' folder "
-        "you made). Never pick your home folder. Agent mode only works for Whitelist / Only-these, "
-        "never Everyone."
+        "Claude Code can be given ONE folder it may read (e.g. a 'bot-files' folder you made). Never pick "
+        "your home folder. Agent mode only works for Whitelist / Only-these, never Everyone.\n"
+        "[yellow]Codex is different: it can read EVERY file your user account can, whatever folder you "
+        "pick. Only use Codex with people you trust completely.[/]"
     )
     raw = ask(f"Folder path (empty = no file access) [{a['agent_folder'] or 'none'}]:")
     if not raw:

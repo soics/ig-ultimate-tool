@@ -23,7 +23,7 @@ def srv(monkeypatch):
     server.server_close()
 
 
-def call(srv, path, body=None, token=True, host=None, ctype="application/json"):
+def call(srv, path, body=None, token=True, host=None, ctype="application/json", cookie=None):
     port = srv.server_address[1]
     data = None if body is None else (body if isinstance(body, bytes) else json.dumps(body).encode())
     req = urllib.request.Request(
@@ -35,6 +35,8 @@ def call(srv, path, body=None, token=True, host=None, ctype="application/json"):
         req.add_header("Content-Type", ctype)
     if host:
         req.add_header("Host", host)
+    if cookie:
+        req.add_header("Cookie", cookie)
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             raw = resp.read()
@@ -60,9 +62,44 @@ def test_locked_to_this_computer_and_the_secret_link(srv):
     assert call(srv, "/api/state", token=False)[0] == 403
     assert call(srv, "/api/state", host=f"evil.example:{port}")[0] == 403  # DNS-rebinding style request
     assert call(srv, "/", token=False)[0] == 403
-    status, html = call(srv, f"/?t={srv.token}", token=False)
-    assert status == 200 and b"IG Ultimate Tool" in html
+    assert call(srv, f"/?t={srv.token}", token=False)[0] == 403  # the API token never works as a link
+    boot = srv.boot
+    status, html = call(srv, f"/?t={boot}", token=False)
+    assert status == 200 and b"IG Ultimate Tool" in html and srv.token.encode() in html
+    assert (
+        call(srv, f"/?t={boot}", token=False)[0] == 403
+    )  # one-time: someone who saw the link can't reuse it
+    assert call(srv, "/", token=False, cookie=f"igut={srv.cookie}")[0] == 200  # the opened tab can reload
+    assert call(srv, "/", token=False, cookie="igut=guess")[0] == 403
     assert call(srv, "/api/preview", b"{}", ctype="text/plain")[0] == 415  # plain HTML forms can't post here
+
+
+def test_pretend_account_never_leaks_into_the_real_one(srv):
+    app = srv.app
+    call(srv, "/api/preview", {})
+    assert app.preview and app._sleep is not None
+    call(srv, "/api/logout", {})
+    assert not app.preview and app.cl is None
+    call(srv, "/api/login", {"username": "you", "password": "pw"})
+    wait(lambda: app.cl is not None)
+    assert not app.preview  # normal human pacing and saving again
+    status, body = call(srv, "/api/preview", {})
+    assert status == 400 and "Log out" in body["error"]
+
+
+def test_ai_key_only_goes_to_its_own_provider(srv, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(webapp.ai, "list_models", lambda s: seen.update(s) or ["llama-4-scout"])
+    monkeypatch.setattr(webapp.ai, "reply", lambda s, system, turns: "hi")
+    call(srv, "/api/preview", {})
+    call(srv, "/api/ai/settings", {"provider": "groq", "key": "gsk_secret", "mode": "whitelist"})
+    call(
+        srv,
+        "/api/ai/settings",
+        {"provider": "groq", "base_url": "https://evil.example/v1", "model": "x", "mode": "whitelist"},
+    )
+    assert seen["base_url"] == "https://api.groq.com/openai/v1"
+    assert srv.app.cfg["ai"]["base_url"] == "https://api.groq.com/openai/v1"
 
 
 def test_preview_tool_run_needs_yes_and_respects_unticked_items(srv):

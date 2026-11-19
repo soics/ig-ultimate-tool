@@ -12,6 +12,6 @@ if ! command -v uv >/dev/null 2>&1; then
   read -n 1 -s -r -p "Press any key to close..."
   exit 1
 fi
-uv run --quiet ig-ultimate "$@"
+uv run --quiet --locked ig-ultimate "$@"
 echo
 read -n 1 -s -r -p "Press any key to close this window..."

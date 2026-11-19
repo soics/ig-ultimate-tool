@@ -8,4 +8,4 @@ if ! command -v uv >/dev/null 2>&1; then
   curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 command -v uv >/dev/null 2>&1 || { echo "Setup failed. Check your internet connection and try again."; exit 1; }
-exec uv run --quiet ig-ultimate "$@"
+exec uv run --quiet --locked ig-ultimate "$@"

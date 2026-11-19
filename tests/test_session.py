@@ -48,6 +48,16 @@ def test_expired_session_logs_in_again_as_the_same_phone():
     assert cl.get_settings()["uuids"] == {"phone_id": "same-phone"}
 
 
+def test_app_folder_and_lists_are_owner_only():
+    from ig_ultimate import engine, tools
+
+    plan = tools.plan_unfollow(FakeClient(), "not_back")
+    listed = engine.save_list(plan)
+    if os.name == "posix":
+        assert stat.S_IMODE(paths.data_dir().stat().st_mode) == 0o700
+        assert stat.S_IMODE(listed.stat().st_mode) == 0o600
+
+
 def test_logout_forgets_the_session():
     paths.write_json(session.session_file(), {"uuids": {}})
     session.logout()

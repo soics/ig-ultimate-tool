@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; form-action 'none'; base-uri 'none'">
+<meta name="igut-token" content="__TOKEN__">
 <title>IG Ultimate Tool</title>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600..800&display=swap" rel="stylesheet">
 <style>
@@ -100,7 +101,8 @@ pre.log { white-space:pre-wrap; background:#fff; border:1px solid var(--rule); b
 
 <script>
 (() => {
-  const T = new URLSearchParams(location.search).get("t") || "";
+  const T = document.querySelector('meta[name="igut-token"]').content;
+  history.replaceState(null, "", "/");  // the one-time code in the address bar is used up; hide it
   const $ = (id) => document.getElementById(id);
   const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids.filter((k) => k != null)); return n; };
   let S = {}, C = {}, section = "Followers";

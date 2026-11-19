@@ -20,6 +20,8 @@ def test_media_downloads_only_from_instagram_servers():
         "https://cdninstagram.com.evil.com/x",
         "file:///etc/passwd",
         "https://169.254.169.254/latest",
+        "https://evil.example\\@scontent.cdninstagram.com/x",  # urlparse and requests disagree on the host
+        "https://user@scontent.cdninstagram.com/x",
     ):
         assert ai.fetch_media(bad) is None
 

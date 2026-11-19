@@ -15,9 +15,9 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from urllib.parse import urlparse
 
 import requests
+from urllib3.util import parse_url
 
 TIMEOUT = 60
 MAX_MEDIA_BYTES = 8 * 1024 * 1024
@@ -84,9 +84,13 @@ PRESETS: dict[str, dict] = {
         "privacy": "Messages are sent to Anthropic through Claude Code.",
     },
     "codex": {
-        "label": "Codex (uses your ChatGPT subscription, slower, can read files)",
+        "label": "Codex (uses your ChatGPT subscription, slower, can read ALL your files)",
         "kind": "cli",
-        "privacy": "Messages are sent to OpenAI through Codex.",
+        "privacy": (
+            "Messages are sent to OpenAI through Codex. WARNING: Codex can read every file your user "
+            "account can (its read-only mode isn't limited to one folder). Only let people you fully "
+            "trust talk to it."
+        ),
     },
     "custom": {
         "label": "Any other OpenAI-compatible server (advanced)",
@@ -104,10 +108,13 @@ class AIError(Exception):
 # ---------------------------------------------------------------- Instagram media
 def fetch_media(url: str) -> bytes | None:
     """Download a photo/voice note from Instagram's own servers only, in memory, size-capped."""
-    host = urlparse(url or "").hostname or ""
-    if not url.startswith("https://") or not any(host == h or host.endswith("." + h) for h in MEDIA_HOSTS):
+    if not url or not url.startswith("https://") or "\\" in url or "@" in url:
         return None
-    with requests.get(url, stream=True, timeout=20) as resp:
+    # Check the host the HTTP library will really connect to, not just what urlparse thinks.
+    host = (parse_url(requests.Request("GET", url).prepare().url).host or "").lower()
+    if not any(host == h or host.endswith("." + h) for h in MEDIA_HOSTS):
+        return None
+    with requests.get(url, stream=True, timeout=20, allow_redirects=False) as resp:
         resp.raise_for_status()
         data = b""
         for chunk in resp.iter_content(64 * 1024):
@@ -273,6 +280,7 @@ def _cli(provider: str, s: dict, system: str, turns: list[dict]) -> str:
                 "codex",
                 "exec",
                 "--skip-git-repo-check",
+                "--ignore-user-config",  # your own Codex MCP servers/settings never run on a DM's say-so
                 "--ephemeral",
                 "--sandbox",
                 "read-only",

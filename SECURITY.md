@@ -2,7 +2,7 @@
 
 ## What the tool keeps on your computer
 
-All files live in your per-user app-data folder (not the download folder), readable only by your user account:
+All files live in your per-user app-data folder (not the download folder). The folder and every file in it are readable only by your user account:
 
 | File | What it is | Sensitive? |
 |---|---|---|
@@ -24,8 +24,11 @@ Nothing is sent to the authors. There is no telemetry.
 ## AI safety rails
 
 - DM text is treated as untrusted: the AI is told never to follow instructions inside messages.
-- Claude Code runs with `--restricted` and no tools (or only file-reading tools inside the one agent folder you choose). Codex runs read-only. AIs that can read files refuse to run in *Everyone* mode.
+- Claude Code runs with `--restricted` and no tools (or only file-reading tools inside the one agent folder you choose).
+- Codex runs in its read-only sandbox with your own Codex config ignored. **Read-only still means it can read every file your user account can.** That's why file-reading AIs refuse to run in *Everyone* mode, and the app warns before you pick Codex.
+- In Whitelist / Only-these modes, a chat where anyone outside your list is talking (e.g. a group) is skipped, and outsiders' messages never reach the AI.
 - Hourly reply caps prevent runaway bot-to-bot conversations.
+- The browser version listens only on `127.0.0.1`, checks the Host header, and needs a secret token on every request. The link it opens carries a one-time code that's swapped for a browser-only cookie, so the token never appears in your address bar or the browser's command line.
 
 ## Reporting a vulnerability
 

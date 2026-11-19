@@ -75,7 +75,9 @@ It only answers messages that arrive after you press Start, sends one message pe
 | OpenAI / Claude API | paid | ✅ | OpenAI ✅ | not used for training |
 | Claude Code / Codex | your subscription | ✅ | ❌ | goes through Anthropic / OpenAI; slower |
 
-**Claude Code and Codex can read files.** Give them one folder in *Agent folder* and they can answer questions about what's in it. For your safety they're never allowed to answer *Everyone*, only your whitelist or pasted usernames, because otherwise any stranger could ask the bot for your files.
+**Claude Code and Codex can read files**, so they're never allowed to answer *Everyone*, only your whitelist or pasted usernames; otherwise any stranger could ask the bot for your files.
+- **Claude Code** runs locked down: with no *Agent folder* it reads nothing; give it one folder and it can read only that.
+- **Codex** can read **every file your user account can**, whatever folder you pick. Only use it with people you trust completely.
 </details>
 
 ## Questions

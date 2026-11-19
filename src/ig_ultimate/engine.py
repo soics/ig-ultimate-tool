@@ -90,8 +90,7 @@ def forget(job: str) -> None:
 def save_list(plan: Plan):
     """Write the full target list to a text file so the user can read it before saying yes."""
     path = paths.data_dir() / "lists" / f"{plan.job}.txt"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(i.label for i in plan.items) + "\n", encoding="utf-8")
+    paths.write_text(path, "\n".join(i.label for i in plan.items) + "\n")
     return path
 
 
