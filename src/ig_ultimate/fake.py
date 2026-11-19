@@ -196,6 +196,32 @@ class FakeClient:
     def direct_threads(self, amount: int = 20, selected_filter=None, box=None, thread_message_limit=None):
         return list(self._threads[:amount] if amount else self._threads)
 
+    def direct_send(
+        self, text: str, user_ids=(), thread_ids=(), send_attribute="message_button", reply_to_message=None
+    ):
+        for t in self._threads:
+            if int(t.id) in [int(x) for x in thread_ids]:
+                t.messages.append(
+                    NS(
+                        id=f"m{len(self.calls)}",
+                        user_id="1000",
+                        timestamp=max((m.timestamp for m in t.messages), default=NOW) + timedelta(seconds=1),
+                        item_type="text",
+                        text=text,
+                        is_sent_by_viewer=True,
+                        media=None,
+                        clip=None,
+                    )
+                )
+        self._did("direct_send", text, tuple(thread_ids))
+        return NS(id="sent")
+
+    def user_id_from_username(self, username: str) -> str:
+        for u in list(self._following.values()) + list(self._followers.values()):
+            if u.username == username:
+                return u.pk
+        raise ig_errors.UserNotFound(username)
+
     def direct_thread_hide(self, thread_id: int, move_to_spam: bool = False) -> bool:
         self._threads = [t for t in self._threads if t.id != str(thread_id)]
         return self._did("direct_thread_hide", thread_id)

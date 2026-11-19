@@ -23,6 +23,8 @@ dependencies = [
   "instagrapi==3.2.19",
   "rich>=13.7,<15",
   "platformdirs>=4.2,<5",
+  "requests>=2.31,<3",
+  "anthropic==2.11.0",
 ]
 
 [project.optional-dependencies]
