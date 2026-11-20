@@ -236,9 +236,7 @@ def refresh_model(s: dict, log=lambda _s: None) -> None:
     if s.get("model_auto", True) or s.get("model") not in models:
         best = pick(models, p.get("prefer", []))
         if best and best != s.get("model"):
-            log(
-                f"Switched the AI model from {s.get('model') or 'none'} to {best} (best one available now)."
-            )
+            log(f"Switched the AI model from {s.get('model') or 'none'} to {best} (best one available now).")
             s["model"] = best
     if p.get("stt_prefer") and s.get("stt_model") not in models:
         s["stt_model"] = pick([m for m in models if any(w in m for w in p["stt_prefer"])], p["stt_prefer"])

@@ -246,3 +246,27 @@ def test_custom_ai_key_never_follows_a_new_address(srv, monkeypatch):
     assert seen[-1]["key"] == ""
     status, err = call(srv, "/api/ai/settings", {**body, "base_url": "http://b.example/v1"})
     assert status == 400 and "https" in err["error"]
+
+
+def test_username_finder_needs_your_username_and_runs_alone(srv, monkeypatch):
+    call(srv, "/api/preview", {})
+    monkeypatch.setattr(webapp.snipe, "LOOKUP_GAP", (0, 0))
+    monkeypatch.setattr(webapp.snipe, "CLAIM_GAP", 0)
+    status, body = call(srv, "/api/hunt/start", {"username": "someone.else"})
+    assert status == 400 and "confirm" in body["error"]
+    srv.app.cl.free_names, srv.app.cl.held_names = set(), set()  # nothing free: hunts until stopped
+    assert call(srv, "/api/hunt/start", {"username": "you", "length": "2"})[0] == 200
+    status, body = call(srv, "/api/ai/start", {})
+    assert status == 400 and "username finder is running" in body["error"]
+    call(srv, "/api/hunt/stop", {})
+    wait(lambda: not call(srv, "/api/state")[1]["hunt"]["running"])
+
+
+def test_username_finder_claims_and_shows_the_new_name(srv, monkeypatch):
+    call(srv, "/api/preview", {})
+    monkeypatch.setattr(webapp.snipe, "LOOKUP_GAP", (0, 0))
+    monkeypatch.setattr(webapp.snipe, "CLAIM_GAP", 0)
+    assert call(srv, "/api/hunt/start", {"username": "you", "mine": "@zen quill"})[0] == 200
+    wait(lambda: not call(srv, "/api/state")[1]["hunt"]["running"])
+    state = call(srv, "/api/state")[1]
+    assert state["username"] == "quill" and any("GOT IT" in s for s in state["hunt"]["log"])

@@ -25,6 +25,7 @@ No modded Instagram app, no paying a social media manager, no giving your passwo
 | 🙍 **Profile** | Clear your bio, link and name · remove your profile picture · make the account private |
 | ☢️ **Nuke** | All of the above in a safe order, to get a brand-new-looking account. Two confirmations plus a 5-second countdown you can cancel |
 | 🤖 **AI auto-reply** | Answers DMs as you: **everyone**, only your **whitelist**, or only **usernames you paste**. Understands photos, memes, voice notes and reels. Free with Groq, or use Gemini, OpenRouter, Ollama, OpenAI, Claude, Claude Code or Codex |
+| 🔎 **Username finder** | Hunts for a free short or rare username (2-letter words, short combos like `pvp`, then uncommon words like `quantum`) at a human pace, claims the first one it gets for your account, then stops. Resumes where it left off. Most short names are taken, so it can take days or weeks |
 
 Everything that changes your account shows you the full list first, offers a **dry run**, and only starts after you type `yes`.
 

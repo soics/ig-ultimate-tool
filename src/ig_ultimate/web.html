@@ -211,7 +211,7 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
   $("agreeBtn").onclick = () => api("/api/agree", {}).then(refresh);
 
   // ---------------------------------------------------------------- sections
-  const SECTIONS = ["Followers", "Chats", "Posts", "Footprint", "Profile", "Auto-reply", "Nuke", "Settings"];
+  const SECTIONS = ["Followers", "Chats", "Posts", "Footprint", "Profile", "Auto-reply", "Username finder", "Nuke", "Settings"];
   function drawNav() {
     $("nav").replaceChildren(...SECTIONS.map((s) => {
       const b = el("button", { type: "button", textContent: s === "Nuke" ? "NUKE" : s, className: s === "Nuke" ? "nuke" : "" });
@@ -224,6 +224,7 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
     const m = $("main");
     if (section === "Nuke") return drawNuke(m);
     if (section === "Auto-reply") return drawAI(m);
+    if (section === "Username finder") return drawHunt(m);
     if (section === "Settings") return drawSettings(m);
     const list = C.tools.filter((t) => t.section === section);
     const holder = el("div");
@@ -436,6 +437,27 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
     showProvider();
   }
 
+  // ---------------------------------------------------------------- username finder
+  function drawHunt(m) {
+    const h = S.hunt;
+    const length = el("select", {}, ...[["", "Shortest first (2, 3, 4, 5, 6+)"], ["2", "Only 2 characters"], ["3", "Only 3 characters"], ["4", "Only 4 letters"], ["5", "Only 5 letters"], ["6", "Only 6 letters or more"]]
+      .map(([v, t]) => el("option", { value: v, textContent: t })));
+    const mine = el("textarea", { placeholder: "your own ideas, tried first (optional)" });
+    const user = el("input", { type: "text", placeholder: S.username });
+    const msg = el("p", { role: "status" });
+    const start = el("button", { className: "btn", type: "button", textContent: "Start hunting", disabled: h.running });
+    const stop = el("button", { className: "btn ghost", type: "button", textContent: "Stop", disabled: !h.running });
+    start.onclick = async () => { try { await api("/api/hunt/start", { length: length.value, mine: mine.value, username: user.value }); await refresh(); drawMain(); } catch (e) { say(msg, e.message, "err"); } };
+    stop.onclick = () => api("/api/hunt/stop", {}).then(refresh).then(drawMain);
+    m.replaceChildren(el("h2", { textContent: "Username finder" }),
+      ...C.hunt_help.split("\n").map((t, i) => el("p", { className: i === 3 ? "warn" : "muted", textContent: t })),
+      el("label", { className: "field" }, "Which names", length),
+      el("label", { className: "field" }, "Your own ideas (optional)", mine),
+      el("label", { className: "field" }, `Type your username (${S.username}) to confirm it may be renamed`, user),
+      el("div", { className: "row" }, start, stop), msg,
+      el("pre", { className: "log", id: "huntLog", textContent: h.log.join("\n") || "Nothing yet." }));
+  }
+
   // ---------------------------------------------------------------- settings
   function drawSettings(m) {
     const mk = (v, label) => { const r = el("input", { type: "radio", name: "speed", value: v, checked: S.speed === v }); r.onchange = () => api("/api/speed", { speed: v }).then(refresh); return el("label", { className: "check" }, r, label); };
@@ -455,7 +477,7 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
 
   // ---------------------------------------------------------------- live state
   $("stopBtn").onclick = () => api("/api/stop", {});
-  let shown = "", dismissed = "";
+  let shown = "", dismissed = "", huntWas = false;
   $("closeBtn").onclick = () => { dismissed = S.job ? S.job.id : ""; $("job").hidden = true; };
   async function refresh() {
     try { S = await api("/api/state"); } catch { return; }
@@ -483,6 +505,8 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
       $("stopBtn").hidden = !j.running;
     }
     const log = $("aiLog"); if (log) log.textContent = S.ai.log.join("\n") || "Nothing yet.";
+    const hlog = $("huntLog"); if (hlog) hlog.textContent = S.hunt.log.join("\n") || "Nothing yet.";
+    if (logged && S.hunt.running !== huntWas) { huntWas = S.hunt.running; if (section === "Username finder") drawMain(); }  // it ended by itself: fix the buttons
   }
   (async () => {
     C = await api("/api/catalog");
