@@ -507,11 +507,11 @@ fieldset.langs { border: 1px solid var(--line); border-radius: 14px; display: fl
     const rows = [["Status", h ? STATE[h.state] || h.state : STATE.ready]];
     if (h) {
       rows.push(["Style", `${h.label}, ${h.min_len}-${h.max_len} characters`], ["Claiming", h.auto_claim ? "Automatic (authorized for this hunt)" : "You claim it yourself"],
-        ["Names checked this hunt", String(h.checks)]);
+        ["Names checked this hunt", String(h.checks)], ["Speed", `${h.speed === "fast" ? "Fast" : "Safe"}: about ${h.per_hour} names an hour (change it in Settings)`]);
       if (h.current && S.hunt.running) rows.push(["Now", "@" + h.current + (h.waiting_for ? `, next step in ${h.waiting_for} s` : "")]);
       if (h.last && h.last.name) rows.push(["Last result", `@${h.last.name}: ${C.hunt_statuses[h.last.status] || h.last.status}`]);
     }
-    if (s) rows.push(["Dashboard", s.alive ? `connected (${s.tabs || 1} tab${s.tabs > 1 ? "s" : ""}); stops after ${s.timeout} s without this page` : "gone: the hunt was stopped"]);
+    if (s) rows.push(["Dashboard", s.alive ? `connected. It keeps hunting as long as this page stays open (day and night). If the page closes, it stops ${s.timeout} s later` : "gone: the hunt was stopped"]);
     const box = el("div", { id: "huntStatus" }, el("table", {}, ...rows.map(([a, b]) => el("tr", {}, el("td", { textContent: a }), el("td", { textContent: b })))));
     if (h && h.message) box.append(el("p", { className: h.state === "running" ? "muted" : "warn", textContent: h.message }));
     if (h && h.won) box.append(el("p", { className: "good", textContent: `Your account is now @${h.won}.` }));
@@ -660,8 +660,8 @@ fieldset.langs { border: 1px solid var(--line); border-radius: 14px; display: fl
       ["Dashboard", s ? (s.alive ? `connected, ${s.tabs || 1} tab(s)` : "disconnected: hunt stopped") : "no hunt yet"]];
     p.replaceChildren(el("table", {}, ...rows.map(([a, b]) => el("tr", {}, el("td", { textContent: a }), el("td", { textContent: b })))),
       el("p", { className: "warn", textContent: i.summary }),
-      el("p", { className: "muted", textContent: "The hunt never runs without this page: it stops after the time below without a heartbeat, and never starts again by itself. Nothing is renamed unless you authorized it for the hunt that is running." }),
-      el("label", { className: "field" }, "Stop the hunt after this many seconds without the page (10-300)", timeout), el("div", { className: "row" }, save), msg);
+      el("p", { className: "muted", textContent: "While this page is open, the hunt never stops by itself: leave it running all night. It only runs while this page is open: if the page closes (or the computer sleeps), it stops after the time below, and never starts again by itself. Nothing is renamed unless you authorized it for the hunt that is running." }),
+      el("label", { className: "field" }, "Safety stop: after the page closes, stop the hunt within this many seconds (10-300)", timeout), el("div", { className: "row" }, save), msg);
   }
 
   // ---------------------------------------------------------------- settings

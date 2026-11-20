@@ -34,7 +34,7 @@ from dataclasses import dataclass
 
 from instagrapi import exceptions as ig_errors
 
-from . import huntdb, names
+from . import awake, huntdb, names
 from .engine import explain
 
 EXPLAIN = (
@@ -42,13 +42,15 @@ EXPLAIN = (
     "Pick a style (short words, rare words, other languages, invented names...). Every name gets a "
     "quality score you can open, and you can star or hide names to teach it your taste.\n"
     "Be realistic: almost every short name is taken or held by Instagram, so a hunt can run for days. "
-    "It checks about 240 names an hour and pauses by itself when Instagram says slow down. It only runs "
-    "while this page is open: close the page and it stops within seconds, keeping its progress.\n"
+    "It checks about 240 names an hour (480 on Fast, in Settings) and pauses by itself when Instagram "
+    "says slow down. It keeps going as long as this page is open, all night if you like, and keeps the "
+    "computer from sleeping by itself. Close the page and it stops within seconds, keeping its progress.\n"
     "'No account has it' is not proof a name is free. By default you claim it yourself in the Instagram "
     "app. Automatic claiming is unofficial (Instagram has no official way to do it), must be switched "
     "on each time, and RENAMES your account straight away: your old username becomes free for anyone."
 )
 LOOKUP_GAP = (10.0, 20.0)  # seconds between lookups: ~240 an hour; a "slow down" still backs off
+FAST_GAP = (5.0, 10.0)  # Settings > Speed: Fast. ~480 an hour: more "slow down" pauses are likely
 CLAIM_GAP = 180.0  # at most one username change attempt every 3 minutes
 CLAIM_REFUSED = 7 * 86400.0  # a change refused for a reason we don't recognise: not tried again for a week
 BACKOFF = (15 * 60.0, 2 * 3600.0)  # "too many requests": 15 min, doubling, max 2 h
@@ -276,6 +278,7 @@ class Hunter:
         alive: Callable[[], bool] = lambda: True,
         sleep: Callable[[float], object] | None = None,
         clock: Callable[[], float] = time.monotonic,
+        speed: str = "safe",
     ):
         label, cats, _profile, lo, hi = names.PRESETS.get(preset, names.PRESETS["og"])
         self.v, self.store, self.account_id, self.me = verifier, store, str(account_id), me.lower()
@@ -295,6 +298,8 @@ class Hunter:
         self.checks, self.current, self.last = 0, "", {}
         self.wait_until = 0.0
         self.last_claim = -CLAIM_GAP
+        self.speed = "fast" if speed == "fast" else "safe"
+        self.gap = FAST_GAP if self.speed == "fast" else LOOKUP_GAP
 
     # -------------------------------------------------------------- controls
     def pause(self):
@@ -324,6 +329,8 @@ class Hunter:
             "last": self.last,
             "waiting_for": round(max(0.0, self.wait_until - self.now())),
             "won": self.won,
+            "speed": self.speed,
+            "per_hour": round(3600 / (sum(self.gap) / 2)),
         }
 
     # -------------------------------------------------------------- waiting
@@ -354,7 +361,14 @@ class Hunter:
         away, or Instagram needs attention (returns "")."""
         self.state = "running"
         try:
-            with self.store.hunting():
+            with self.store.hunting(), awake.keep_awake() as awake_ok:
+                self.log(
+                    "This computer won't go to sleep by itself while it hunts (the screen can still turn "
+                    "off). Keep a laptop's lid open and plugged in."
+                    if awake_ok
+                    else "This computer may go to sleep by itself, and that stops the hunt. To hunt all "
+                    "night, set it to never sleep."
+                )
                 return self._run()
         except huntdb.HuntBusy as exc:
             self.state, self.message = "blocked", str(exc)
@@ -432,7 +446,7 @@ class Hunter:
                     return ""
             elif ans.status == "possibly_available":
                 self.log(f"@{name}: no account has it. Claim it in the Instagram app (see Results).")
-            self._pause(random.uniform(*LOOKUP_GAP))
+            self._pause(random.uniform(*self.gap))
         return ""
 
     def _next(self, lanes) -> str | None:
