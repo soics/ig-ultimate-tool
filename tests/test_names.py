@@ -2,6 +2,7 @@
 
 import itertools
 import statistics
+from importlib import resources
 
 from ig_ultimate import names
 
@@ -55,6 +56,19 @@ def test_lexicon_merges_duplicates_and_keeps_provenance():
     assert d["license"] == "MIT" and d["source"]
     assert names.describe("zqzq")["source"].startswith("generated")
     assert all(names.validate(n)[0] != "invalid" for n in lex)
+
+
+def test_frequency_word_list_is_big_clean_credited_and_never_overrides_hand_picked_words():
+    lex = names.lexicon()
+    wf = {n: e for n, e in lex.items() if e.get("src") == "wordfreq"}
+    assert len(wf) > 50_000 and len({x for e in wf.values() for x in e["langs"]}) >= 20
+    assert all(n.isascii() and n.isalpha() and 3 <= len(n) <= 8 and not names.risks(n) for n in wf)
+    assert not {"kurac", "pizda", "kontol", "puta", "merda", "kurwa", "cazzo"} & set(wf)
+    assert all(lex[n] is e for n, e in names.curated().items())  # hand-picked entry wins
+    d = names.describe(next(iter(wf)))
+    assert d["license"] == "CC BY-SA 4.0" and "zenodo" in d["source"] and d["confidence"] == "medium"
+    head = resources.files("ig_ultimate").joinpath("data", "words.txt").read_text(encoding="utf-8")[:900]
+    assert "CC BY-SA 4.0" in head and "Robyn Speer" in head
 
 
 def test_generators_are_deterministic_bounded_and_clean():

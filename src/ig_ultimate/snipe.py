@@ -379,6 +379,12 @@ class Hunter:
     def _run(self) -> str:
         if won := self._recover():
             return won
+        if any(
+            self.store.get(f"ingested:{c}") != huntdb.GEN_VERSION
+            for c in self.cats
+            if c not in huntdb.OPEN and c != "custom"
+        ):
+            self.log("Getting the name list ready. Only the first time: it can take up to a minute.")
         self.store.ensure(self.cats)
         mode = "claims automatically (unofficial)" if self.auto else "finds names for you to claim"
         self.log(

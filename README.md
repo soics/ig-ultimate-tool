@@ -25,7 +25,7 @@ No modded Instagram app, no paying a social media manager, no giving your passwo
 | 🙍 **Profile** | Clear your bio, link and name · remove your profile picture · make the account private |
 | ☢️ **Nuke** | All of the above in a safe order, to get a brand-new-looking account. Two confirmations plus a 5-second countdown you can cancel |
 | 🤖 **AI auto-reply** | Answers DMs as you: **everyone**, only your **whitelist**, or only **usernames you paste**. Understands photos, memes, voice notes and reels. Free with Groq, or use Gemini, OpenRouter, Ollama, OpenAI, Claude, Claude Code or Codex |
-| 🔎 **Username finder** (username sniper) | Looks for a short, cool username nobody has yet. It makes a list of names (short words, words from 18 languages, made-up names), gives each a score so the best go first, and checks them slowly, like a person would. When it finds a free one, you grab it. Most short names are taken, so it can take days |
+| 🔎 **Username finder** (username sniper) | Looks for a short, cool username nobody has yet. It makes a list of names (about 80,000 real words from 37 languages, made-up names, every 3- and 4-character name), gives each a score so the best go first, and checks them slowly, like a person would. When it finds a free one, you grab it. Most short names are taken, so it can take days |
 
 Everything that changes your account shows you the full list first, offers a **dry run**, and only starts after you type `yes`.
 
@@ -263,3 +263,5 @@ Every tool is a *plan* (targets + one action) run by one safe-action engine (`sr
 <sub>Keywords: Instagram multi-tool, Instagram username sniper, username finder, username checker, OG username, Instagram mass unfollower, unfollow non-followers, Instagram cleaner, Instagram AI chatbot, Instagram AI auto-reply, Instagram DM bot.</sub>
 
 Built on [instagrapi](https://github.com/subzeroid/instagrapi). Not affiliated with, endorsed by, or connected to Instagram or Meta. [MIT license](LICENSE): free to use, change and share, with no warranty.
+
+The username finder's big word list (`src/ig_ultimate/data/words.txt`) comes from [wordfreq](https://github.com/rspeer/wordfreq): Robyn Speer. (2022). rspeer/wordfreq: v3.0 (v3.0.2). Zenodo. https://doi.org/10.5281/zenodo.7199437. That one file is under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) (lowercased, accents removed, filtered); everything else is MIT. Bad words were filtered out with the [LDNOOBW](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words) lists (CC BY 4.0, not included).

@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS history (
   id INTEGER PRIMARY KEY, at REAL NOT NULL, name TEXT NOT NULL, event TEXT NOT NULL, detail TEXT NOT NULL);
 """
 CORRUPT = re.compile(r"not a database|malformed|corrupt", re.I)
-GEN_VERSION = "2"  # bump when a generator's output changes, so categories get topped up again
+GEN_VERSION = "3"  # bump when a generator's output changes, so categories get topped up again
 MAX_CUSTOM = 500
 OPEN = {"invented": names.invented, "four": names.four}  # too big to store at once: added in batches
 
