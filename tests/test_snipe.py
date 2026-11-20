@@ -56,11 +56,21 @@ def test_held_name_is_skipped_for_good_and_the_free_one_is_claimed_at_once():
     assert store.pick(["custom"], now=huntdb.time.time() + 10**9) is None  # held never comes back
 
 
-def test_an_unclear_username_check_leaves_it_to_the_claim():
+def test_an_unclear_username_check_never_spends_a_claim(monkeypatch):
     cl = FakeClient()
     cl.check_username = lambda name: (_ for _ in ()).throw(ig_errors.ClientError("odd"))
-    h, cl, store, _, _ = make(cl)
-    assert h.run() == "quill" and store.row("zen")["status"] == "held"  # the claim itself said no
+    h, cl, store, clock, logs = make(cl, max_checks=2)
+    monkeypatch.setattr(huntdb.time, "time", lambda: 1e9 + clock.t)
+    assert h.run() == "" and cl._account.username == "you"
+    assert not [c for c in cl.calls if c[0] == "account_edit"]  # v1.5.2 blind-claimed held zen here
+    zen = store.row("zen")
+    assert zen["status"] == "possibly_available" and zen["next_at"] - zen["checked_at"] == snipe.CHECK_OFF
+    assert any("No claim spent" in s for s in logs)
+    store.mark("zen", "possibly_available")  # still no answer the second time: wait days, not 30 min
+    h, *_ = make(cl, names=(), first=(), max_checks=1)
+    h.store = store
+    h.run()
+    assert store.row("zen")["next_at"] - store.row("zen")["checked_at"] >= huntdb.DAY
 
 
 def test_a_slow_down_from_the_username_check_never_stalls_the_hunt():
@@ -72,8 +82,9 @@ def test_a_slow_down_from_the_username_check_never_stalls_the_hunt():
         raise ig_errors.ClientThrottledError("429 Client Error: for url: .../users/check_username/")
 
     cl.check_username = throttled
-    h, cl, store, clock, _ = make(cl)
-    assert h.run() == "quill" and store.row("zen")["status"] == "held"  # the claims decided instead
+    h, cl, store, clock, _ = make(cl, max_checks=2)
+    assert h.run() == "" and not [c for c in cl.calls if c[0] == "account_edit"]  # no blind claims
+    assert store.row("zen")["status"] == store.row("quill")["status"] == "possibly_available"
     assert asked == ["zen"]  # asked once, then left alone instead of hammering it
     assert clock.t < snipe.BACKOFF[0]  # no 15-minute hunt pause over the check
 
@@ -289,18 +300,18 @@ def test_interrupted_claim_is_resolved_on_the_next_start():
 
 def test_stop_during_the_claim_gap_keeps_the_name_for_next_time():
     cl = FakeClient()
-    cl.check_username = lambda name: {}  # no clear answer: zen's claim is refused, so quill waits the gap
+    cl.free_names.add("zen")  # the check calls zen free but the change is refused, so quill waits the gap
     h, cl, store, clock, _ = make(cl, names=("zen", "quill"))
     real_sleep = h.sleep
 
     def stop_in_gap(s):
-        if store.row("quill")["status"] == "possibly_available":  # looked up, now waiting to claim
+        if store.row("quill")["status"] == "verified_available":  # checked, now waiting to claim
             h.stop()
         real_sleep(s)
 
     h.sleep = stop_in_gap
     assert h.run() == "" and cl._account.username == "you"
-    assert store.row("quill")["status"] == "possibly_available"  # v1 skipped it for good here...
+    assert store.row("quill")["status"] == "verified_available"  # v1 skipped it for good here...
     assert store.pick(["custom"]) == "quill"  # ...v2 tries it first next time
 
 
