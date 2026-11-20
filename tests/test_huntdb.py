@@ -35,7 +35,9 @@ def test_results_are_trusted_until_their_recheck_time():
     s.add_custom(["lumen"], 0)
     s.mark("lumen", "taken")
     assert s.pick(["custom"]) is None
-    assert s.pick(["custom"], now=time.time() + huntdb.RECHECK["taken"] + 1) == "lumen"
+    assert s.pick(["custom"], now=time.time() + 10**9) is None  # taken: never looked at again
+    s.mark("lumen", "possibly_available")
+    assert s.pick(["custom"], now=time.time() + huntdb.RECHECK["possibly_available"] + 1) == "lumen"
     s.mark("lumen", "claimed")
     assert s.pick(["custom"], now=time.time() + 10**9) is None  # claimed/invalid: never again
     for _ in range(3):
@@ -46,8 +48,8 @@ def test_results_are_trusted_until_their_recheck_time():
 def test_fresh_names_come_before_rechecks_of_names_that_failed():
     s = huntdb.Store("1")
     s.add_custom(["lumen", "zzxq"], 0)  # lumen scores higher
-    s.mark("lumen", "taken")
-    later = time.time() + huntdb.RECHECK["taken"] + 1
+    s.mark("lumen", "failed_verification")
+    later = time.time() + huntdb.RECHECK["failed_verification"] + 1
     assert s.pick(["custom"], now=later) == "zzxq"  # its recheck is due, but a never-tried name goes first
     s.mark("zzxq", "held")
     assert s.pick(["custom"], now=later + huntdb.RECHECK["held"]) == "lumen"  # only once nothing new is left

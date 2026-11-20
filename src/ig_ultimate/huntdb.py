@@ -32,7 +32,7 @@ DAY = 86400.0
 STATUSES = {
     "unchecked": "Not checked yet",
     "invalid": "Not a valid username",
-    "taken": "Taken (an account has it)",
+    "taken": "Taken (an account has it; skipped for good)",
     "possibly_available": "Possibly available (no account found; not proof)",
     "verified_available": "Verified available (Instagram itself confirmed it)",
     "held": "Held by Instagram (not free to claim; skipped for good)",
@@ -52,7 +52,8 @@ RECHECK = {
     "rate_limited": 0.0,  # the hunter already waited out the backoff: same name again, first
     "failed_verification": 7 * DAY,
 }
-NEVER_PICK = ("invalid", "held", "claiming", "claimed")  # held: Instagram keeps it, so never again
+# taken/held: never looked at again (Myths 2026-11-20: spend checks on new names, not old answers)
+NEVER_PICK = ("invalid", "taken", "held", "claiming", "claimed")
 FIELDS = (
     "name, category, tags, score, adj, info, status, attempts, checked_at, next_at, "
     "favorite, excluded, priority, note"

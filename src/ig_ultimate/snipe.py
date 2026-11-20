@@ -6,10 +6,10 @@ a Verifier asks Instagram -> the result is written down before anything else hap
 When the lookup finds no account, Instagram's own username check (the one behind the Edit profile
 screen) is asked straight away: held names are skipped for good without spending a claim, and a
 name it calls free is claimed that same moment. No clear answer from that check = no claim: the
-name is asked about again later.
+name is asked about once more after 30 minutes, and skipped for good (as held) if still unclear.
 
 What a result means:
-- "taken": an account has the name.
+- "taken": an account has the name. Never looked at again.
 - "possibly available": no account was found and Instagram's username check gave no clear answer.
   That is NOT proof: Instagram keeps the names of banned, deactivated and recently renamed accounts.
 - "verified available": Instagram's username check says it is free. Still only a change that shows
@@ -53,8 +53,9 @@ EXPLAIN = (
     "computer from sleeping by itself. Close the page and it stops within seconds, keeping its progress.\n"
     "When no account has a name, it asks Instagram's own username check: held names (kept from banned "
     "or deactivated accounts) are skipped for good, and a name Instagram calls free is claimed that same "
-    "second if you switched automatic claiming on. If that check doesn't answer, nothing is claimed "
-    "and the name is checked again later. Otherwise you claim it yourself in the Instagram "
+    "second if you switched automatic claiming on. If that check doesn't answer, nothing is claimed: "
+    "the name is asked about once more after 30 minutes, then skipped for good. Taken names are skipped "
+    "for good too. Otherwise you claim it yourself in the Instagram "
     "app. Automatic claiming is unofficial (Instagram has no official way to do it), must be switched "
     "on each time, and RENAMES your account straight away: your old username becomes free for anyone."
 )
@@ -481,10 +482,13 @@ class Hunter:
             # Only a name Instagram's own check calls free is claimed. Live 2026-11-20: with the check
             # throttled, 13 of 16 blind claims hit held names, each a refused change on the account.
             claim = ans.status == "verified_available" and self.auto and not names.blocked(name)
-            # No clear answer from the check: ask it once more later (one retry, so these can't crowd
-            # out unchecked names), never spend a claim on a maybe.
+            # No clear answer from the check: ask it once more in 30 min; still unclear = treat as held,
+            # skipped for good. Never spend a claim on a maybe.
             unsure = ans.status == "possibly_available" and bool(self.auto)
             again = unsure and (self.store.row(name) or {}).get("status") != "possibly_available"
+            if unsure and not again:
+                ans = Answer("held", "Instagram's username check gave no answer twice: skipped for good.")
+                unsure = False
             # Recorded before anything else; a claim we then don't get to make is retried first next time.
             self.store.mark(name, ans.status, ans.detail, soon=claim, wait=CHECK_OFF if again else None)
             self.last = {"name": name, "status": ans.status}
@@ -494,17 +498,16 @@ class Hunter:
                 if self.state != "running":
                     return ""
             elif unsure:
-                when = "in 30 minutes" if again else "in a few days"
                 self.log(
                     f"@{name}: no account has it, but Instagram's username check gave no answer, so it "
-                    f"may be held. No claim spent; checking again {when}. You can try it in the app."
+                    "may be held. No claim spent; asking once more in 30 minutes. You can try it in the app."
                 )
             elif ans.status == "verified_available":
                 self.log(f"@{name}: FREE, Instagram's own check says so. Claim it now in the Instagram app.")
             elif ans.status == "possibly_available":
                 self.log(f"@{name}: no account has it. Claim it in the Instagram app (see Results).")
             elif ans.status == "held":
-                self.log(f"@{name}: held by Instagram. Skipped for good.")
+                self.log(f"@{name}: held by Instagram (or its check never answered). Skipped for good.")
             self._pause(random.uniform(*self.gap))
         return ""
 
