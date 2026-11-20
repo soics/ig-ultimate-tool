@@ -1,0 +1,1207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Scripts on this page can't send your data anywhere: connect-src 'none' blocks every upload. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>IG Ultimate Tool: clean up your Instagram for free</title>
+<meta name="description" content="See who doesn't follow you back without logging in, then clean up followers, chats, posts, likes and more with a free, open-source tool that runs on your own computer.">
+<meta name="theme-color" content="#F0E4CC">
+<style>
+:root {
+  --cream: #F0E4CC; --cream-hi: #F8EEDA; --cream-lo: #E3CFA8; --paper: #FBF5E8;
+  --black: #000; --ink: #161310; --warm: #5C5243; --line: #DCCBAA;
+  --pink: #FF3D7F; --pink-deep: #D41D57; --err: #B0123F; --ok: #176A44;
+  --display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --body: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --grain-dark: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.09  0 0 0 0 0.07  0 0 0 0 0.05  0 0 0 .14 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  --grain-light: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 .95  0 0 0 0 .88  0 0 0 .10 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+html:has(#consent:not([hidden])) { scroll-padding-bottom: 16rem; }
+body { margin: 0; background: var(--cream); color: var(--ink); font: 1.0625rem/1.6 var(--body); overflow-x: hidden; }
+a { color: inherit; text-decoration-thickness: .08em; text-underline-offset: .2em; }
+button { font: inherit; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 6px; }
+.dark :focus-visible, .consent :focus-visible { outline-color: var(--pink); }
+.consent :focus-visible { outline-color: var(--ink); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.wrap { width: min(1180px, 100% - 2rem); margin-inline: auto; position: relative; z-index: 1; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
+h2 { font-size: clamp(1.8rem, 4.2vw, 3.1rem); line-height: 1.02; letter-spacing: -.035em; font-weight: 800; max-width: 18ch; }
+p, li { text-wrap: pretty; }
+.lead { font-size: 1.15rem; max-width: 46ch; color: var(--warm); margin: 1rem 0 0; }
+section, footer { position: relative; isolation: isolate; overflow: hidden; }
+section { padding-block: clamp(4.5rem, 9vw, 7.5rem); }
+.dark { color: var(--cream); }
+.dark .lead { color: #BDB3A2; }
+
+.bg-hero { background: var(--grain-dark), radial-gradient(110% 80% at 88% 8%, var(--cream-hi), transparent 60%), radial-gradient(80% 70% at 0% 100%, var(--cream-lo), transparent 62%), var(--cream); }
+.bg-swipe { background: var(--grain-light), radial-gradient(520px circle at var(--mx, 72%) var(--my, 45%), rgba(255,61,127,.30), transparent 62%), radial-gradient(120% 90% at 50% 120%, #1c0a12, transparent 60%), var(--black); }
+.bg-dots { background: var(--grain-dark), radial-gradient(circle, rgba(22,19,16,.12) 1.15px, transparent 1.35px) 0 0 / 22px 22px, radial-gradient(90% 70% at 100% 0%, var(--cream-hi), transparent 60%), var(--cream); }
+.bg-tools { background: var(--grain-light), radial-gradient(90% 60% at 10% 110%, rgba(255,61,127,.16), transparent 60%), var(--black); }
+.bg-bubbles { background: var(--grain-dark), url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='120'><g fill='none' stroke='%23161310' stroke-opacity='.07' stroke-width='1.6'><rect x='10' y='12' width='62' height='30' rx='15'/><path d='M22 42 l-6 9 l14-9'/><rect x='82' y='66' width='54' height='28' rx='14'/><path d='M124 94 l6 9 l-14-9'/></g></svg>") 0 0 / 150px 120px, var(--cream); }
+.bg-honest { background: var(--grain-light), radial-gradient(70% 60% at 0% 0%, rgba(255,61,127,.14), transparent 60%), radial-gradient(60% 50% at 100% 100%, rgba(240,228,204,.08), transparent 60%), var(--black); }
+.bg-start { background: var(--grain-dark), radial-gradient(90% 70% at 100% 100%, var(--cream-lo), transparent 60%), radial-gradient(70% 60% at 0% 0%, var(--cream-hi), transparent 60%), var(--cream); }
+.bg-foot { background: var(--grain-light), var(--black); }
+
+.btn { display: inline-flex; align-items: center; gap: .5rem; min-height: 48px; font-weight: 700; padding: .85rem 1.4rem; border-radius: 999px; border: 2px solid var(--ink); background: var(--ink); color: var(--cream); cursor: pointer; text-decoration: none;
+  transition-property: transform, background-color, border-color, color, box-shadow; transition-duration: .15s; transition-timing-function: ease-out; box-shadow: 0 1px 0 rgba(0,0,0,.2), 0 8px 18px -10px rgba(22,19,16,.55); }
+.btn:hover { background: var(--pink-deep); border-color: var(--pink-deep); color: #fff; }
+.btn:active { transform: scale(.96); }
+.btn.line { background: transparent; color: inherit; box-shadow: none; }
+.btn.line:hover { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+.dark .btn { background: var(--cream); color: var(--black); border-color: var(--cream); }
+.dark .btn:hover { background: var(--pink-deep); color: #fff; border-color: var(--pink-deep); }
+.dark .btn.line { background: transparent; color: var(--cream); border-color: var(--cream); }
+.dark .btn.line:hover { background: var(--cream); color: var(--black); }
+.chipbtn { min-height: 44px; padding: .5rem 1rem; border-radius: 999px; border: 2px solid var(--ink); background: transparent; color: var(--ink); font-weight: 700; cursor: pointer; transition-property: background-color, color; transition-duration: .15s; }
+.chipbtn[aria-pressed="true"] { background: var(--ink); color: var(--cream); }
+.chipbtn:hover:not([aria-pressed="true"]) { background: rgba(22,19,16,.08); }
+
+/* ------------------------------------------------ header */
+.top { position: absolute; inset: 0 0 auto; z-index: 5; }
+.top .wrap { display: flex; justify-content: space-between; align-items: center; padding-block: 1.25rem; }
+.brand { font: 800 1.05rem/1 var(--display); letter-spacing: -.02em; text-decoration: none; }
+.top nav { display: flex; gap: 1.4rem; font-weight: 600; font-size: .95rem; }
+.top nav a { text-decoration: none; padding-block: .6rem; }
+.top nav a:hover { color: var(--err); }
+@media (max-width: 720px) { .top nav a:not(:last-child) { display: none; } }
+
+/* ------------------------------------------------ hero */
+#field { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+.hero { min-height: 100svh; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: center; gap: 2rem; padding-top: 4.5rem; padding-bottom: 1.5rem; pointer-events: none; }
+.hero > * { pointer-events: auto; }
+@media (max-width: 900px) { .hero { grid-template-columns: 1fr; min-height: 0; padding-top: 6.5rem; } }
+.hero h1 { font-size: clamp(2.5rem, 5.6vw, 5rem); line-height: .95; letter-spacing: -.05em; font-weight: 800; }
+.hero h1 .cut { position: relative; display: inline-block; color: var(--warm); white-space: nowrap; }
+@media (max-width: 480px) { .hero h1 .cut { white-space: normal; } }
+.hero h1 .cut::after { content: ""; position: absolute; left: -2%; right: -2%; top: 52%; height: .11em; background: var(--pink); border-radius: 3px; transform: scaleX(0); transform-origin: left; animation: strike .6s .5s cubic-bezier(.7,0,.2,1) forwards; }
+@keyframes strike { to { transform: scaleX(1); } }
+.hero .lead { color: var(--ink); font-size: 1.25rem; }
+.cta { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 2rem; }
+.trust { margin-top: 1.4rem; font-size: .95rem; color: var(--warm); }
+
+/* the real 3D phone */
+/* controls sit beside the phone on wide screens so the phone can use the full screen height */
+.phonewrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem; }
+.controls { display: grid; gap: .9rem; justify-items: start; }
+.controls .scenes { flex-direction: column; align-items: stretch; }
+.controls .hint { text-align: left; max-width: 12rem; }
+@media (max-width: 900px) {
+  .phonewrap { grid-template-columns: 1fr; }
+  .controls { justify-items: center; }
+  .controls .scenes { flex-direction: row; }
+  .controls .hint { text-align: center; max-width: none; }
+}
+.stage3d { position: relative; width: 100%; height: clamp(460px, calc(100svh - 110px), 900px); cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+@media (max-width: 900px) { .stage3d { height: min(760px, 135vw); } }
+.stage3d:active { cursor: grabbing; }
+.stage3d canvas { display: block; width: 100%; height: 100%; }
+.floor { position: absolute; left: 50%; bottom: 3%; width: 46%; height: 34px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, rgba(22,19,16,.32), rgba(22,19,16,0)); filter: blur(3px); pointer-events: none; }
+.flat { display: grid; place-items: center; height: 100%; }
+.flat canvas { width: 280px; height: auto; border-radius: 44px; border: 10px solid #111; box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); }
+.scenes { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; }
+.finishes { display: flex; align-items: center; gap: .55rem; font-size: .9rem; color: var(--warm); }
+.sw { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--cream); box-shadow: 0 0 0 1.5px var(--warm); cursor: pointer; padding: 0; position: relative; }
+.sw::after { content: ""; position: absolute; inset: -8px; }
+.sw[aria-pressed="true"] { box-shadow: 0 0 0 2.5px var(--ink); }
+.hint { text-align: center; color: var(--warm); font-size: .85rem; margin: 0; }
+.still { background: none; border: 0; color: var(--warm); text-decoration: underline; cursor: pointer; padding: .5rem; font-size: .85rem; }
+
+/* ------------------------------------------------ swipe deck */
+.marquee { position: absolute; left: 0; bottom: 6%; z-index: 0; display: flex; white-space: nowrap; font: 800 clamp(4.5rem, 13vw, 11rem)/1 var(--display); letter-spacing: -.04em; color: transparent; -webkit-text-stroke: 1.2px rgba(240,228,204,.13); pointer-events: none; animation: drift 60s linear infinite; }
+.marquee.top { top: 4%; bottom: auto; animation-direction: reverse; animation-duration: 75s; }
+.marquee span { padding-right: .6em; }
+html.still .marquee { animation-play-state: paused; }
+@keyframes drift { to { transform: translateX(-50%); } }
+.deckgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 3rem; align-items: center; }
+@media (max-width: 900px) { .deckgrid { grid-template-columns: 1fr; } }
+.deck { position: relative; height: 380px; perspective: 1100px; max-width: 360px; width: 100%; margin-inline: auto; }
+.card { position: absolute; inset: 0; border-radius: 28px; background: var(--grain-dark), var(--paper); color: var(--ink); padding: 1.6rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 1px 0 rgba(255,255,255,.4) inset, 0 30px 60px -30px rgba(255,61,127,.45); transform-origin: 50% 90%; touch-action: pan-y; cursor: grab;
+  transition-property: transform, opacity; transition-duration: .35s; transition-timing-function: cubic-bezier(.2,.8,.2,1); }
+.card.drag { transition: none; cursor: grabbing; }
+.card .face { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; font: 800 2rem/1 var(--display); color: #fff; }
+.card .h { font: 800 1.45rem/1.1 var(--display); letter-spacing: -.03em; overflow-wrap: anywhere; }
+.card .n { color: var(--warm); margin-top: .2rem; }
+.card .tag { align-self: flex-start; padding: .35rem .8rem; border-radius: 99px; font-weight: 700; font-size: .85rem; }
+.card .tag.no { background: var(--pink-deep); color: #fff; }
+.card .tag.yes { background: var(--cream); border: 1px solid var(--line); }
+.stamp { position: absolute; top: 1.4rem; padding: .3rem .8rem; border: 3px solid; border-radius: 10px; font: 800 1.1rem/1 var(--display); opacity: 0; transform: rotate(-12deg); }
+.stamp.u { right: 1.2rem; color: var(--err); }
+.stamp.k { left: 1.2rem; color: var(--ok); transform: rotate(12deg); }
+.deckctl { display: flex; gap: .8rem; justify-content: center; margin-top: 1.4rem; flex-wrap: wrap; }
+.tally { display: flex; gap: 2rem; margin-top: 2rem; }
+.tally div { font: 800 2.6rem/1 var(--display); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.tally span { display: block; font: 600 .85rem/1.3 var(--body); color: #BDB3A2; letter-spacing: 0; margin-top: .35rem; }
+.done { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 1rem; }
+
+/* ------------------------------------------------ checker */
+.checker { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 3rem; align-items: start; }
+@media (max-width: 900px) { .checker { grid-template-columns: 1fr; } }
+.drop { display: grid; gap: .4rem; place-items: center; text-align: center; padding: 2.6rem 1.4rem; background: var(--paper); border: 2px dashed var(--warm); border-radius: 26px; cursor: pointer; transition-property: border-color, transform; transition-duration: .15s; box-shadow: 0 20px 40px -30px rgba(22,19,16,.5); }
+.drop:hover, .drop.over { border-color: var(--pink-deep); transform: translateY(-2px); }
+.drop strong { font: 700 1.15rem/1.2 var(--display); }
+.drop span { color: var(--warm); font-size: .95rem; }
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.drop:has(:focus-visible) { outline: 3px solid var(--ink); outline-offset: 3px; }
+.small { font-size: .92rem; color: var(--warm); }
+.status { min-height: 1.6em; font-weight: 700; margin-top: 1rem; }
+.status.err { color: var(--err); }
+details.how { margin-top: 1.4rem; }
+details.how summary { cursor: pointer; font-weight: 700; padding-block: .4rem; }
+details.how ol { padding-left: 1.2rem; }
+.results { background: var(--paper); border-radius: 26px; padding: 1.6rem; margin-top: 1.5rem; box-shadow: 0 20px 40px -30px rgba(22,19,16,.5); }
+.tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.tab { font-weight: 700; min-height: 44px; padding: .55rem 1rem; border-radius: 999px; border: 2px solid var(--warm); background: transparent; color: var(--ink); cursor: pointer; transition-property: background-color, border-color, color; transition-duration: .15s; }
+.tab[aria-pressed="true"], .tab[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: var(--cream); }
+.big { font: 800 clamp(1.7rem, 3.4vw, 2.4rem)/1.05 var(--display); letter-spacing: -.04em; margin: .3rem 0 .6rem; font-variant-numeric: tabular-nums; }
+.filter { width: 100%; max-width: 22rem; font: inherit; padding: .65rem .85rem; border: 2px solid var(--warm); border-radius: 14px; background: #fff; margin: .2rem 0 1rem; }
+.filter::placeholder { color: var(--warm); opacity: 1; }
+.names { list-style: none; padding: 0; margin: 0; columns: 2 11rem; column-gap: 2rem; font-weight: 600; line-height: 2; }
+.names a { text-decoration: none; }
+.names a:hover { text-decoration: line-through; text-decoration-color: var(--pink); text-decoration-thickness: .14em; }
+
+/* ------------------------------------------------ tools */
+.tools { margin-top: 3rem; border-top: 1px solid #2c2925; }
+.tool { display: grid; grid-template-columns: 13rem 1fr auto; gap: 1.5rem; padding: 1.5rem 0; border-bottom: 1px solid #2c2925; align-items: start; }
+@media (max-width: 760px) { .tool { grid-template-columns: 1fr; gap: .5rem; } }
+.tool h3 { font-size: 1.35rem; letter-spacing: -.03em; position: relative; width: fit-content; }
+.tool h3::after { content: ""; position: absolute; left: 0; right: 0; top: 55%; height: .12em; background: var(--pink); transform: scaleX(0); transform-origin: left; transition: transform .35s cubic-bezier(.7,0,.2,1); }
+.tool:hover h3::after, .tool:focus-within h3::after { transform: scaleX(1); }
+.tool p { margin: 0; color: #D2C8B6; max-width: 60ch; }
+.tool.nuke h3 { color: var(--pink); }
+.seeit { background: none; border: 1.5px solid #4a443d; color: var(--cream); border-radius: 999px; min-height: 40px; padding: .4rem .9rem; font-weight: 700; font-size: .88rem; cursor: pointer; white-space: nowrap; transition-property: border-color, background-color; transition-duration: .15s; }
+.seeit:hover { border-color: var(--pink); background: rgba(255,61,127,.1); }
+
+/* ------------------------------------------------ AI chat */
+.ai { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 3rem; align-items: center; }
+@media (max-width: 900px) { .ai { grid-template-columns: 1fr; } }
+.chat { background: var(--grain-light), var(--black); border-radius: 30px; padding: 1.4rem; display: grid; gap: .6rem; max-width: 26rem; transform: perspective(1000px) rotateY(-8deg) rotateX(4deg); box-shadow: 30px 40px 60px -40px rgba(0,0,0,.6); transition: transform .5s ease-out; }
+.chat:hover { transform: perspective(1000px) rotateY(0) rotateX(0); }
+.bubble { max-width: 82%; padding: .65rem 1rem; border-radius: 20px; line-height: 1.35; }
+.them { background: #26231f; color: var(--cream); justify-self: start; border-bottom-left-radius: 6px; }
+.you { background: var(--pink-deep); color: #fff; justify-self: end; border-bottom-right-radius: 6px; }
+.media { font-style: italic; color: #C9BFAE; }
+.ai ul { padding-left: 1.2rem; }
+.ai li { margin-bottom: .5rem; max-width: 52ch; }
+
+/* ------------------------------------------------ honesty */
+.honest { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); gap: 2.5rem 4rem; margin-top: 2.5rem; }
+.honest h3 { font-size: 1.2rem; margin-bottom: .8rem; }
+.honest ul { margin: 0; padding-left: 1.2rem; }
+.honest li { margin-bottom: .6rem; max-width: 52ch; color: #D2C8B6; }
+.honest .risk h3 { color: var(--pink); }
+
+/* ------------------------------------------------ steps */
+.steps { list-style: none; counter-reset: s; padding: 0; margin: 3rem 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: 1.4rem; }
+.steps > li { counter-increment: s; background: var(--paper); border-radius: 26px; padding: 1.6rem; border: 1px solid var(--line); box-shadow: 0 24px 40px -32px rgba(22,19,16,.55); }
+.steps > li::before { content: counter(s); display: block; font: 800 3rem/1 var(--display); color: var(--pink-deep); margin-bottom: .8rem; }
+.steps h3 { font-size: 1.15rem; margin-bottom: .5rem; }
+.steps p { margin: 0 0 .9rem; }
+.os { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .7rem; }
+.os .tab { min-height: 40px; padding: .4rem .8rem; font-size: .9rem; }
+code { font-size: .9em; background: var(--cream); padding: .1em .4em; border-radius: 6px; border: 1px solid var(--line); }
+
+/* ------------------------------------------------ faq + footer */
+.faq { max-width: 48rem; margin-top: 2rem; }
+.faq details { border-bottom: 1px solid var(--line); padding: .7rem 0; }
+.faq summary { cursor: pointer; font: 700 1.05rem/1.4 var(--display); letter-spacing: -.01em; padding-block: .4rem; }
+.faq p { margin: .5rem 0 .4rem; color: var(--warm); }
+footer { padding-block: 3.5rem 3rem; color: #BDB3A2; font-size: .95rem; }
+.foot { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 2rem; align-items: end; }
+@media (max-width: 720px) { .foot { grid-template-columns: 1fr; } }
+.maker { font: 800 clamp(1.6rem, 3.6vw, 2.4rem)/1.05 var(--display); letter-spacing: -.035em; color: var(--cream); margin: 0 0 1rem; }
+.socials { display: flex; flex-wrap: wrap; gap: .7rem; }
+.social { display: inline-flex; align-items: center; gap: .55rem; min-height: 48px; padding: .6rem 1.1rem; border-radius: 999px; border: 1.5px solid #3a3530; color: var(--cream); text-decoration: none; font-weight: 700; transition-property: border-color, background-color, transform; transition-duration: .15s; }
+.social:hover { border-color: var(--pink); background: rgba(255,61,127,.08); }
+.social:active { transform: scale(.96); }
+.social svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+footer p { margin: 0 0 .6rem; max-width: 62ch; }
+footer button { background: none; border: 0; color: var(--cream); text-decoration: underline; cursor: pointer; padding: .6rem 0; }
+
+/* ------------------------------------------------ cookie banner */
+.consent { position: fixed; left: 1rem; bottom: 1rem; z-index: 50; width: min(24rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; background: var(--grain-dark), var(--paper); color: var(--ink); border: 2px solid var(--ink); border-radius: 22px; padding: 1.2rem 1.3rem; box-shadow: 8px 8px 0 var(--ink); animation: rise .35s cubic-bezier(.2,.8,.2,1); }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+.consent h2 { font-size: 1.05rem; letter-spacing: -.02em; margin-bottom: .4rem; }
+.consent p { margin: 0 0 1rem; font-size: .93rem; color: var(--warm); }
+.consent .row { display: flex; gap: .6rem; flex-wrap: wrap; }
+.consent .btn { min-height: 44px; padding: .6rem 1.1rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .hero h1 .cut::after { animation: none; transform: scaleX(1); }
+  .marquee, .consent { animation: none; }
+  .card, .chat { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="consent" id="consent" role="dialog" aria-labelledby="consentTitle" aria-describedby="consentText" hidden>
+  <h2 id="consentTitle">Cookies? Not here.</h2>
+  <p id="consentText">No ads, no tracking, no cookies. One question: may this site load its fonts from Google Fonts? Google would see your IP address. Say no and it uses your device's fonts.</p>
+  <div class="row">
+    <button class="btn" type="button" id="accept">Accept</button>
+    <button class="btn line" type="button" id="decline">Essentials only</button>
+  </div>
+</div>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top">IG Ultimate Tool</a>
+    <nav aria-label="Sections"><a href="#swipe">Try it</a><a href="#check">Checker</a><a href="#tools">Tools</a><a href="https://github.com/soics/ig-ultimate-tool">GitHub</a><a href="#start">Download</a></nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="bg-hero" style="padding:0">
+    <canvas id="field" aria-hidden="true"></canvas>
+    <div class="wrap hero">
+      <div>
+        <h1>Your Instagram, cleaned up. <span class="cut">Not by hand.</span></h1>
+        <p class="lead">Unfollow people who don't follow back, clear chats you haven't touched in months, unlike, unsave and wipe old posts. A free tool that runs on your own computer.</p>
+        <div class="cta">
+          <a class="btn" href="#start">Download free</a>
+          <a class="btn line" href="#check">Who doesn't follow me back?</a>
+        </div>
+        <p class="trust">Open source. No login on this website. Your password never leaves your computer.</p>
+      </div>
+      <div class="phonewrap">
+        <div class="stage3d" id="stage3d" role="img" aria-label="Illustration: a phone showing what IG Ultimate Tool does, screen by screen."><div class="floor" id="floor"></div></div>
+        <div class="controls">
+        <div class="scenes" role="group" aria-label="Show on the phone">
+          <button class="chipbtn" type="button" data-scene="unfollow" aria-pressed="true">Unfollow</button>
+          <button class="chipbtn" type="button" data-scene="chats" aria-pressed="false">Old chats</button>
+          <button class="chipbtn" type="button" data-scene="likes" aria-pressed="false">Likes</button>
+          <button class="chipbtn" type="button" data-scene="nuke" aria-pressed="false">Nuke</button>
+        </div>
+        <div class="finishes" role="group" aria-label="Phone finish">
+          <span aria-hidden="true">Finish</span>
+          <button class="sw" type="button" data-finish="black" aria-pressed="true" aria-label="Black" style="background:#2b2a27"></button>
+          <button class="sw" type="button" data-finish="natural" aria-pressed="false" aria-label="Natural" style="background:#b9b4ab"></button>
+          <button class="sw" type="button" data-finish="desert" aria-pressed="false" aria-label="Desert" style="background:#c6a98a"></button>
+          <button class="sw" type="button" data-finish="cream" aria-pressed="false" aria-label="Cream" style="background:#e7d9bd"></button>
+        </div>
+        <p class="hint">Drag the phone to spin it. <button class="still" type="button" id="still" aria-pressed="false">Pause animations</button></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dark bg-swipe" id="swipe">
+    <div class="marquee top" aria-hidden="true"><span>keep · unfollow · keep · unfollow ·</span><span>keep · unfollow · keep · unfollow ·</span></div>
+    <div class="marquee" aria-hidden="true"><span>unfollow · keep · unfollow · keep ·</span><span>unfollow · keep · unfollow · keep ·</span></div>
+    <div class="wrap deckgrid">
+      <div>
+        <h2>Swipe left to unfollow. Then let the tool do the other 400.</h2>
+        <p class="lead">Try it on these pretend accounts: drag a card left to unfollow, right to keep. The real tool shows you every account like this first, then works through hundreds while you do something else.</p>
+        <div class="tally" aria-live="polite" aria-atomic="true">
+          <div id="tUn">0<span>unfollowed</span></div>
+          <div id="tKeep">0<span>kept</span></div>
+        </div>
+        <p id="deckSay" class="sr" role="status"></p>
+      </div>
+      <div>
+        <div class="deck" id="deck"></div>
+        <div class="deckctl">
+          <button class="btn line" type="button" id="bUn">Unfollow</button>
+          <button class="btn" type="button" id="bKeep">Keep</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-dots" id="check">
+    <div class="wrap checker">
+      <div>
+        <h2>Who doesn't follow you back?</h2>
+        <p class="lead">Drop the data file Instagram gives you and see the list in seconds. It's read inside your browser: no login, nothing uploaded.</p>
+        <details class="how">
+          <summary>How do I get my Instagram data file?</summary>
+          <ol>
+            <li>In the Instagram app, open your profile, tap the menu, then <b>Accounts Center</b>.</li>
+            <li>Tap <b>Your information and permissions</b> &gt; <b>Download your information</b> &gt; <b>Download or transfer information</b>.</li>
+            <li>Pick your account, choose <b>Some of your information</b>, tick <b>Followers and following</b>.</li>
+            <li>Choose <b>Download to device</b>, format <b>JSON</b>, then <b>Create files</b>.</li>
+            <li>Instagram emails you when it's ready (often within an hour). Drop the .zip here.</li>
+          </ol>
+          <p class="small">Menu names change now and then; search the app's settings for "Download your information".</p>
+        </details>
+      </div>
+      <div>
+        <label class="drop" id="drop">
+          <strong>Choose your Instagram data file</strong>
+          <span>the .zip Instagram emails you, or the followers / following files inside it</span>
+          <input type="file" id="file" accept=".zip,.json,.html" multiple>
+        </label>
+        <div class="cta" style="margin-top:1rem">
+          <button class="btn line" type="button" id="sample">Try it with sample data</button>
+        </div>
+        <p class="small">Your file stays in your browser: this page is locked so it can't upload anything.</p>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+        <div class="results" id="results" hidden>
+          <div class="tabs" role="group" aria-label="Which list">
+            <button class="tab" id="tab-not" aria-pressed="true" type="button">They don't follow you back</button>
+            <button class="tab" id="tab-fans" aria-pressed="false" type="button">You don't follow them back</button>
+          </div>
+          <p class="big" id="count" aria-live="polite"></p>
+          <input class="filter" id="filter" type="search" placeholder="Search a name" aria-label="Search the list">
+          <ul class="names" id="names" role="list"></ul>
+          <div class="cta"><button class="btn line" type="button" id="copy">Copy the list</button></div>
+          <p class="small">Want them gone in one go? <a href="#start">Get the free tool</a>: it shows you this exact list first and only starts when you type yes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dark bg-tools" id="tools">
+    <div class="marquee" aria-hidden="true" style="bottom:auto;top:38%"><span>followers · chats · posts · likes · saves · tags · profile · nuke ·</span><span>followers · chats · posts · likes · saves · tags · profile · nuke ·</span></div>
+    <div class="wrap">
+      <h2>Everything that takes forever by hand.</h2>
+      <p class="lead">Pick a job, see exactly what it will touch, and it works through the list at a human pace.</p>
+      <div class="tools">
+        <div class="tool"><h3>Followers</h3><p>Unfollow people who don't follow you back, everyone, or a list you paste. Remove followers you don't follow back, or all of them. A keep-list protects the people who matter.</p><button class="seeit" type="button" data-see="unfollow">See it on the phone</button></div>
+        <div class="tool"><h3>Chats</h3><p>Delete every chat with no messages in the last 4, 6 or 12 months (you choose), pick chats to delete, and leave old group chats, one or all.</p><button class="seeit" type="button" data-see="chats">See it on the phone</button></div>
+        <div class="tool"><h3>Posts</h3><p>Archive old posts and reels (you can bring them back) or delete them for good. Clear stories and highlights.</p><span></span></div>
+        <div class="tool"><h3>Footprint</h3><p>Unlike everything you ever liked, unsave all saved posts, wipe comments on your posts, and remove yourself from photos you're tagged in.</p><button class="seeit" type="button" data-see="likes">See it on the phone</button></div>
+        <div class="tool"><h3>Profile</h3><p>Clear your bio, link and name, remove your profile picture, switch to private.</p><span></span></div>
+        <div class="tool nuke"><h3>Nuke</h3><p>All of the above in a safe order, for an account that looks brand new. It asks twice, then counts down from 5 so you can still back out.</p><button class="seeit" type="button" data-see="nuke">See it on the phone</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-bubbles">
+    <div class="wrap ai">
+      <div>
+        <h2>Replies that sound like you.</h2>
+        <p class="lead">Turn on AI auto-reply and it answers DMs the way you text: photos, memes, voice notes and reels included. Free with a Groq key.</p>
+        <ul>
+          <li>Reply to everyone, only your whitelist, or only usernames you paste.</li>
+          <li>One message per reply, and it steps back the moment you answer yourself.</li>
+          <li>If someone sincerely asks whether it's a bot, it won't lie.</li>
+          <li>Works with Groq, Gemini, OpenRouter, Ollama, OpenAI, Claude, Claude Code and Codex.</li>
+        </ul>
+      </div>
+      <div class="chat" role="group" aria-label="Example conversation">
+        <div class="bubble them media">sent a meme: a cat falling off a table</div>
+        <div class="bubble you">LMAOOO this is me every monday 😭</div>
+        <div class="bubble them media">voice note: "you still coming saturday?"</div>
+        <div class="bubble you">yeah for sure, what time again?</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dark bg-honest">
+    <div class="wrap">
+      <h2>What it does with your account, honestly.</h2>
+      <div class="honest">
+        <div>
+          <h3>What stays private</h3>
+          <ul>
+            <li>It runs on your computer and talks only to Instagram, plus the AI you pick if you turn auto-reply on.</li>
+            <li>Your password is typed hidden and never saved. Only Instagram's login session is kept, readable by you alone.</li>
+            <li>No accounts, no tracking, no servers of ours. Every line of code is public on GitHub.</li>
+          </ul>
+        </div>
+        <div class="risk">
+          <h3>What can go wrong</h3>
+          <ul>
+            <li>Automating an account is against Instagram's terms. Instagram can pause actions for a day or two ("Action Blocked"); the tool stops by itself when that happens.</li>
+            <li>Older, real accounts are far lower risk than brand-new ones. Fast mode is faster and riskier.</li>
+            <li>Deleted posts, chats and comments don't come back. Download your data first.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-start" id="start">
+    <div class="wrap">
+      <h2>Start it in three steps.</h2>
+      <p class="lead">No installing Python, no typing commands. The first start sets itself up in a minute or two.</p>
+      <ol class="steps" role="list">
+        <li>
+          <h3>Download</h3>
+          <p>One file works for Windows, Mac and Linux. Unzip it anywhere.</p>
+          <a class="btn" href="https://github.com/soics/ig-ultimate-tool/archive/refs/heads/main.zip">Download (.zip)</a>
+        </li>
+        <li>
+          <h3>Open it</h3>
+          <div class="os" role="tablist" aria-label="Your computer">
+            <button class="tab" role="tab" data-os="win" id="ostab-win" aria-controls="ospanel-win" type="button">Windows</button>
+            <button class="tab" role="tab" data-os="mac" id="ostab-mac" aria-controls="ospanel-mac" type="button">Mac</button>
+            <button class="tab" role="tab" data-os="linux" id="ostab-linux" aria-controls="ospanel-linux" type="button">Linux</button>
+          </div>
+          <div class="ospanel" role="tabpanel" id="ospanel-win" aria-labelledby="ostab-win" data-panel="win"><p>Double-click <code>Start-Windows.bat</code>. If a blue box says "Windows protected your PC", click <b>More info</b>, then <b>Run anyway</b>.</p></div>
+          <div class="ospanel" role="tabpanel" id="ospanel-mac" aria-labelledby="ostab-mac" data-panel="mac" hidden><p>Right-click <code>Start-Mac.command</code>, choose <b>Open</b>, then <b>Open</b> again. Only the first time.</p></div>
+          <div class="ospanel" role="tabpanel" id="ospanel-linux" aria-labelledby="ostab-linux" data-panel="linux" hidden><p>Open a terminal in the folder and run <code>./start-linux.sh</code>.</p></div>
+        </li>
+        <li>
+          <h3>Pick how to use it</h3>
+          <p>Type <code>I agree</code>, then choose <b>Use it in my web browser</b> for buttons, checkboxes and swipe-to-review, or try everything on a pretend account first.</p>
+        </li>
+      </ol>
+
+      <div class="faq">
+        <details><summary>Is this made by Instagram?</summary><p>No. It's an independent open-source project, not affiliated with Instagram or Meta.</p></details>
+        <details><summary>Why not just use a website that does this?</summary><p>Websites that log into your Instagram hold your account on their servers. This tool never leaves your computer, and you can read every line of it.</p></details>
+        <details><summary>Will I get banned?</summary><p>Very unlikely on an aged, real account at the normal speed. You may see Instagram's temporary "Action Blocked" after lots of actions; the tool stops, and continues where it left off after you wait a day or two.</p></details>
+        <details><summary>Does it work with two-factor login?</summary><p>Yes, it asks for your code. If Instagram asks "Was this you?", approve it in the app, wait 15 minutes, and try again.</p></details>
+        <details><summary>What does the checker do with my file?</summary><p>It opens the file in your browser's memory, compares your followers and following, and shows the result. The page's security settings block it from uploading or sending data anywhere. If you drop a .zip, a small zip reader is downloaded from cdnjs to open it.</p></details>
+        <details><summary>Something doesn't work</summary><p>Open an issue on <a href="https://github.com/soics/ig-ultimate-tool/issues">GitHub</a> and say what you clicked and what you saw. Never post your session file or password.</p></details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="dark bg-foot">
+  <div class="wrap foot">
+    <div>
+      <p class="maker">Made by Myths.</p>
+      <div class="socials">
+        <a class="social" href="https://www.instagram.com/mv.lls/" rel="me noopener" target="_blank">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r=".6" fill="currentColor"/></svg><span class="sr">Instagram: </span>@mv.lls<span class="sr"> (opens in a new tab)</span>
+        </a>
+        <a class="social" href="https://github.com/soics" rel="me noopener" target="_blank">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4 1.3-4-2-6-2.5M15 21v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1-.3-3.4 1.3a11.6 11.6 0 0 0-6 0C6.8 2.8 5.8 3.1 5.8 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4.4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg><span class="sr">GitHub: </span>soics<span class="sr"> (opens in a new tab)</span>
+        </a>
+      </div>
+    </div>
+    <div>
+      <p>IG Ultimate Tool is free and open source under the MIT license, with no warranty. Not affiliated with, endorsed by, or connected to Instagram or Meta. 3D by three.js (MIT).</p>
+      <p><a href="https://github.com/soics/ig-ultimate-tool">Source code</a> · <button type="button" id="privacyBtn">Cookie &amp; privacy choices</button></p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+  window.igut = { calm, still: calm };
+
+  // ---------------------------------------------------- always open at the top; section links scroll without adding #hash to the URL
+  history.scrollRestoration = "manual";
+  if (location.hash) { history.replaceState(null, "", location.pathname + location.search); addEventListener("load", () => scrollTo({ top: 0, behavior: "instant" })); }
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest('a[href^="#"]'); const t = a && document.querySelector(a.getAttribute("href"));
+    if (!t) return;
+    e.preventDefault();
+    t.scrollIntoView({ behavior: calm ? "auto" : "smooth" });
+    if (!t.hasAttribute("tabindex")) t.setAttribute("tabindex", "-1");
+    t.focus({ preventScroll: true });  // keyboard users continue from the section they jumped to
+  });
+
+  // ---------------------------------------------------- pause animations (for people who haven't set reduced motion)
+  $("still").onclick = (e) => {
+    window.igut.still = !window.igut.still;
+    document.documentElement.classList.toggle("still", window.igut.still);
+    e.currentTarget.setAttribute("aria-pressed", window.igut.still);
+    e.currentTarget.textContent = window.igut.still ? "Play animations" : "Pause animations";
+  };
+
+  // ---------------------------------------------------- cookie / font consent
+  const loadFonts = () => {
+    if ($("gfonts")) return;
+    const l = document.createElement("link");
+    l.id = "gfonts"; l.rel = "stylesheet";
+    l.href = "https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=Unbounded:wght@600;800&display=swap";
+    document.head.append(l);
+    document.fonts && document.fonts.ready.then(() => window.dispatchEvent(new Event("igut-fonts")));
+  };
+  let consentFrom = null;
+  const closeConsent = () => { $("consent").hidden = true; if (consentFrom) consentFrom.focus(); consentFrom = null; };
+  const choice = store.get("igut-consent");
+  if (choice === "accept") loadFonts(); else if (!choice) $("consent").hidden = false;
+  $("accept").onclick = () => { store.set("igut-consent", "accept"); loadFonts(); closeConsent(); };
+  $("decline").onclick = () => { store.set("igut-consent", "essential"); closeConsent(); };
+  $("privacyBtn").onclick = () => { consentFrom = $("privacyBtn"); $("consent").hidden = false; $("accept").focus(); };
+
+  // ---------------------------------------------------- hero background: a field of usernames your cursor strikes out
+  const handles = ["crypto_deals_4u", "mia_rose", "gym.bro.daily", "luna.sky", "ex.from.2019", "jayden.k", "random.giveaway",
+    "noah_b", "meme.page.48213", "ava_eats", "free.followers.now", "zoe.art", "kai.waves", "nina.blue", "promo.daily",
+    "theo.cam", "old.class.chat", "ivy_g", "dm.for.collab", "otto.b", "follow4follow.x", "sara_k", "spam.bot.2020", "liam.fit"];
+  const cv = $("field"), cx = cv.getContext("2d");
+  let words = [], W = 0, H = 0, animating = false;
+  const layoutField = () => {
+    const r = cv.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = r.width; H = r.height;
+    cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cx.font = "600 15px " + getComputedStyle(document.body).fontFamily;
+    words = []; let i = 0;
+    for (let y = 40; y < H; y += 46) {
+      let x = (y / 46) % 2 ? -40 : 30;
+      while (x < W) {
+        const t = "@" + handles[i++ % handles.length];
+        const w = cx.measureText(t).width;
+        words.push({ x, y, t, w, cut: 0, goal: 0, at: 0 });
+        x += w + 70;
+      }
+    }
+    draw();
+  };
+  const draw = () => {
+    cx.clearRect(0, 0, W, H);
+    let moving = false; const now = performance.now();
+    for (const w of words) {
+      if (w.goal && now - w.at > 5000) w.goal = 0;
+      w.cut += (w.goal - w.cut) * (calm ? 1 : 0.12);
+      if (Math.abs(w.goal - w.cut) > 0.01) moving = true; else w.cut = w.goal;
+      cx.fillStyle = `rgba(22,19,16,${0.09 + w.cut * 0.5})`;
+      cx.fillText(w.t, w.x, w.y);
+      if (w.cut > 0.01) { cx.fillStyle = `rgba(255,61,127,${0.55 * Math.min(1, w.cut * 1.5)})`; cx.fillRect(w.x - 2, w.y - 6, (w.w + 4) * w.cut, 2.5); }
+    }
+    if (moving || words.some((w) => w.goal)) { animating = true; requestAnimationFrame(draw); } else animating = false;
+  };
+  const heroSec = cv.parentElement;
+  heroSec.addEventListener("pointermove", (e) => {
+    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, now = performance.now();
+    for (const w of words) { const dx = Math.max(w.x - x, 0, x - (w.x + w.w)), dy = Math.abs(w.y - 5 - y); if (dx < 46 && dy < 30) { w.goal = 1; w.at = now; } }
+    if (!animating) draw();
+  });
+  new ResizeObserver(layoutField).observe(heroSec);
+  window.addEventListener("igut-fonts", layoutField);
+
+  // ---------------------------------------------------- "See it on the phone"
+  document.querySelectorAll(".seeit").forEach((b) => b.addEventListener("click", () => {
+    window.dispatchEvent(new CustomEvent("igut-scene", { detail: { scene: b.dataset.see, user: true } }));
+    $("stage3d").scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "center" });
+    document.querySelector(`.chipbtn[data-scene="${b.dataset.see}"]`).focus({ preventScroll: true });
+  }));
+
+  // ---------------------------------------------------- swipe section: pink spotlight follows the pointer
+  const swipeSec = $("swipe");
+  swipeSec.addEventListener("pointermove", (e) => {
+    const r = swipeSec.getBoundingClientRect();
+    swipeSec.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    swipeSec.style.setProperty("--my", `${e.clientY - r.top}px`);
+  });
+
+  // ---------------------------------------------------- swipe deck
+  const hues = ["#D41D57", "#161310", "#B08D57", "#5C5243", "#E5577F", "#3A342D"];
+  const deckPeople = [
+    { h: "crypto_deals_4u", n: "Crypto Deals", back: false }, { h: "mia_rose", n: "Mia", back: true },
+    { h: "gym.bro.daily", n: "Daily Gains", back: false }, { h: "luna.sky", n: "Luna", back: true },
+    { h: "random.giveaway", n: "WIN AN IPHONE", back: false }, { h: "ex.from.2019", n: "you know who", back: false },
+    { h: "jayden.k", n: "Jayden", back: true },
+  ];
+  const deck = $("deck");
+  let queue = [], unf = 0, kept = 0;
+  const makeCard = (p, i) => {
+    const c = el("div", "card"); c.dataset.h = p.h;
+    const face = el("div", "face", p.h[0].toUpperCase()); face.style.background = hues[i % hues.length]; face.setAttribute("aria-hidden", "true");
+    const who = el("div"); who.append(el("div", "h", "@" + p.h), el("div", "n", p.n));
+    const su = el("div", "stamp u", "UNFOLLOW"), sk = el("div", "stamp k", "KEEP");
+    su.setAttribute("aria-hidden", "true"); sk.setAttribute("aria-hidden", "true");
+    c.append(su, sk, face, who, el("div", "tag " + (p.back ? "yes" : "no"), p.back ? "follows you back" : "doesn't follow you back"));
+    return c;
+  };
+  const layout = () => queue.forEach((c, i) => {
+    const tilt = i === 0 ? 0 : (i % 2 ? -4 : 3.5) * Math.min(i, 2);
+    c.setAttribute("aria-hidden", i ? "true" : "false");
+    c.style.zIndex = String(100 - i);
+    c.style.transform = `translate3d(${i ? (i % 2 ? -10 : 12) : 0}px, ${i * 18}px, ${-i * 60}px) rotate(${tilt}deg) scale(${1 - i * 0.04})`;
+    c.style.opacity = i > 3 ? "0" : "1";
+  });
+  const tally = () => { $("tUn").firstChild.nodeValue = String(unf); $("tKeep").firstChild.nodeValue = String(kept); };
+  const resetDeck = () => {
+    deck.replaceChildren();
+    queue = deckPeople.map(makeCard);
+    queue.slice().reverse().forEach((c) => deck.append(c));
+    unf = kept = 0; tally(); layout(); bind();
+  };
+  const fling = (dir) => {
+    const c = queue.shift(); if (!c) return;
+    c.classList.remove("drag");
+    c.style.transform = `translate3d(${dir * 520}px, -40px, 0) rotate(${dir * 28}deg)`;
+    c.style.opacity = "0";
+    c.setAttribute("aria-hidden", "true");
+    if (dir < 0) unf += 1; else kept += 1;
+    tally();
+    $("deckSay").textContent = `${dir < 0 ? "Unfollowed" : "Kept"} @${c.dataset.h}. ${queue[0] ? "Next: @" + queue[0].dataset.h : "All reviewed."}`;
+    setTimeout(() => c.remove(), 400);
+    layout(); bind();
+    if (!queue.length) {
+      const done = el("div", "done"), inner = el("div");
+      const again = el("button", "btn line", "Do it again"); again.type = "button"; again.style.marginTop = "1rem";
+      again.onclick = () => { resetDeck(); $("bUn").focus(); };
+      inner.append(el("h3", "", `${unf} unfollowed, ${kept} kept.`), el("p", "", "The tool does this for your whole list."), again);
+      done.append(inner); deck.append(done);
+      if (document.activeElement === $("bUn") || document.activeElement === $("bKeep")) again.focus();
+    }
+  };
+  function bind() {
+    const c = queue[0]; if (!c || c.dataset.bound) return;
+    c.dataset.bound = "1";
+    let sx = 0, dx = 0, active = false;
+    c.addEventListener("pointerdown", (e) => { active = true; sx = e.clientX; dx = 0; c.classList.add("drag"); c.setPointerCapture(e.pointerId); });
+    c.addEventListener("pointermove", (e) => {
+      if (!active) return;
+      dx = e.clientX - sx;
+      c.style.transform = `translate3d(${dx}px, 0, 40px) rotate(${dx / 16}deg) rotateY(${dx / 14}deg)`;
+      c.querySelector(".stamp.u").style.opacity = String(Math.min(1, Math.max(0, -dx / 110)));
+      c.querySelector(".stamp.k").style.opacity = String(Math.min(1, Math.max(0, dx / 110)));
+    });
+    const end = () => {
+      if (!active) return; active = false; c.classList.remove("drag");
+      if (Math.abs(dx) > 110) fling(dx < 0 ? -1 : 1);
+      else { c.querySelectorAll(".stamp").forEach((s) => (s.style.opacity = "0")); layout(); }
+    };
+    c.addEventListener("pointerup", end);
+    c.addEventListener("pointercancel", end);
+  }
+  $("bUn").onclick = () => fling(-1);
+  $("bKeep").onclick = () => fling(1);
+  resetDeck();
+
+  // ---------------------------------------------------- checker: reading Instagram's export
+  const status = $("status");
+  let lists = { not: [], fans: [] }, current = "not";
+  const nameOf = (entry) => {
+    const s = (entry.string_list_data || [])[0] || {};
+    if (s.value) return s.value;
+    if (entry.title) return entry.title;
+    const m = String(s.href || "").match(/instagram\.com\/(?:_u\/)?([^/?#]+)/);
+    return m ? m[1] : "";
+  };
+  const fromJson = (data) => (Array.isArray(data) ? data : data.relationships_followers || data.relationships_following || []).map(nameOf).filter(Boolean);
+  const fromHtml = (text) => [...new DOMParser().parseFromString(text, "text/html").querySelectorAll('a[href*="instagram.com"]')]
+    .map((a) => (a.textContent || "").trim()).filter((t) => t && !t.includes(" "));
+  const kind = (path) => {
+    const base = path.split("/").pop().toLowerCase();
+    if (/^followers(_\d+)?\.(json|html)$/.test(base)) return "followers";
+    if (/^following\.(json|html)$/.test(base)) return "following";
+    return null;
+  };
+  const parse = (path, text) => (path.toLowerCase().endsWith(".html") ? fromHtml(text) : fromJson(JSON.parse(text)));
+  const loadZip = () => window.JSZip ? Promise.resolve() : new Promise((ok, fail) => {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+    s.integrity = "sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG";
+    s.crossOrigin = "anonymous";
+    s.onload = ok;
+    s.onerror = () => fail(new Error("The zip reader didn't load. Check your connection, or drop the two files from inside the zip instead."));
+    document.head.append(s);
+  });
+  async function readFiles(files) {
+    const got = { followers: [], following: [] }, seen = { followers: false, following: false };
+    for (const file of files) {
+      if (file.name.toLowerCase().endsWith(".zip")) {
+        await loadZip();
+        const zip = await JSZip.loadAsync(file);
+        for (const path of Object.keys(zip.files)) {
+          const k = kind(path);
+          if (!k) continue;
+          got[k].push(...parse(path, await zip.files[path].async("string")));
+          seen[k] = true;
+        }
+      } else {
+        const k = kind(file.name);
+        if (!k) continue;
+        got[k].push(...parse(file.name, await file.text()));
+        seen[k] = true;
+      }
+    }
+    if (!seen.followers || !seen.following) throw new Error("Couldn't find both your followers and following lists. Make sure you requested 'Followers and following' in JSON format.");
+    return got;
+  }
+  function show(got) {
+    const followers = new Set(got.followers.map((n) => n.toLowerCase()));
+    const followingSet = new Set(got.following.map((n) => n.toLowerCase()));
+    lists.not = [...followingSet].filter((n) => !followers.has(n)).sort();
+    lists.fans = [...followers].filter((n) => !followingSet.has(n)).sort();
+    status.classList.remove("err");
+    status.textContent = `Read ${followers.size} followers and ${followingSet.size} accounts you follow.`;
+    $("results").hidden = false;
+    select("not");
+    $("results").scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "nearest" });
+  }
+  function select(which) {
+    current = which;
+    $("tab-not").setAttribute("aria-pressed", which === "not");
+    $("tab-fans").setAttribute("aria-pressed", which === "fans");
+    render();
+  }
+  function render() {
+    const q = $("filter").value.trim().toLowerCase().replace(/^@/, "");
+    const names = lists[current].filter((n) => n.includes(q));
+    const total = lists[current].length;
+    const what = current === "not"
+      ? `${total} ${total === 1 ? "person doesn't" : "people don't"} follow you back`
+      : `You don't follow back ${total} ${total === 1 ? "person" : "people"}`;
+    $("count").textContent = q ? `${what} (${names.length} match "${q}")` : what;
+    $("names").replaceChildren(...(names.length ? names : []).map((n) => {
+      const li = el("li"), a = el("a", "", "@" + n);
+      a.href = `https://www.instagram.com/${encodeURIComponent(n)}/`;
+      a.target = "_blank"; a.rel = "noopener noreferrer";
+      li.append(a);
+      return li;
+    }));
+    if (q && !names.length) $("names").append(el("li", "", "No names match that search."));
+  }
+  async function handle(files) {
+    status.classList.remove("err");
+    status.textContent = "Reading your file...";
+    try { show(await readFiles([...files])); }
+    catch (e) {
+      status.classList.add("err");
+      status.textContent = e instanceof SyntaxError ? "That file isn't valid JSON. Request your data again in JSON format." : e.message;
+    }
+  }
+  const drop = $("drop");
+  $("file").addEventListener("change", (e) => e.target.files.length && handle(e.target.files));
+  ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", (e) => e.dataTransfer.files.length && handle(e.dataTransfer.files));
+  $("sample").addEventListener("click", () => show({
+    followers: ["luna.sky", "jayden.k", "ava_eats", "noah_b", "zoe.art", "kai.waves", "nina.blue"],
+    following: ["luna.sky", "jayden.k", "ava_eats", "noah_b", "gym.bro.daily", "crypto_deals_4u", "ex.from.2019", "random.giveaway"],
+  }));
+  $("tab-not").addEventListener("click", () => select("not"));
+  $("tab-fans").addEventListener("click", () => select("fans"));
+  $("filter").addEventListener("input", render);
+  $("copy").addEventListener("click", async () => {
+    const text = lists[current].map((n) => "@" + n).join("\n");
+    try { await navigator.clipboard.writeText(text); $("copy").textContent = "Copied"; status.textContent = `Copied ${lists[current].length} names.`; }
+    catch { $("copy").textContent = "Couldn't copy: select the names instead"; }
+    setTimeout(() => ($("copy").textContent = "Copy the list"), 2000);
+  });
+
+  // ---------------------------------------------------- how to open it, for this computer (tabs with arrow keys)
+  const tabs = [...document.querySelectorAll(".os .tab")];
+  const pickOs = (os) => {
+    tabs.forEach((t) => { t.setAttribute("aria-selected", t.dataset.os === os); t.tabIndex = t.dataset.os === os ? 0 : -1; });
+    document.querySelectorAll(".ospanel").forEach((p) => (p.hidden = p.dataset.panel !== os));
+  };
+  tabs.forEach((t) => t.addEventListener("click", () => pickOs(t.dataset.os)));
+  document.querySelector(".os").addEventListener("keydown", (e) => {
+    const i = tabs.indexOf(document.activeElement); if (i < 0) return;
+    const n = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key]; if (n == null) return;
+    e.preventDefault(); const t = tabs[(n + tabs.length) % tabs.length]; t.focus(); pickOs(t.dataset.os);
+  });
+  const ua = navigator.userAgent;
+  pickOs(/Mac/i.test(ua) && !/iPhone|iPad/i.test(ua) ? "mac" : /Linux/i.test(ua) && !/Android/i.test(ua) ? "linux" : "win");
+})();
+</script>
+
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js" } }</script>
+<script type="module">
+import * as THREE from "three";
+import { RoomEnvironment } from "./vendor/three/RoomEnvironment.js";
+
+const stage = document.getElementById("stage3d");
+const calm = window.igut.calm;
+const FONT = () => getComputedStyle(document.body).fontFamily;
+
+// ====================================================== the phone screen: four live scenes drawn on a canvas
+const SW = 600, SH = 1296;
+const screen = document.createElement("canvas");
+screen.width = SW; screen.height = SH;
+const g = screen.getContext("2d");
+const PINK = "#FF3D7F", PINK_DEEP = "#D41D57", INK = "#111", GREY = "#8a8a8a", LIGHT = "#efefef";
+const avatarHues = ["#D41D57", "#2a2622", "#B08D57", "#5C5243", "#E5577F", "#3A342D", "#7A6A55", "#C25B7A"];
+const ease = (t) => (t < 0 ? 0 : t > 1 ? 1 : 1 - Math.pow(1 - t, 3));
+const rr = (x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
+const txt = (s, x, y, size, weight = 600, color = INK, align = "left") => { g.font = `${weight} ${size}px ${FONT()}`; g.fillStyle = color; g.textAlign = align; g.fillText(s, x, y); };
+function heart(x, y, s, filled, color) {
+  g.beginPath();
+  g.moveTo(x, y + s * 0.3);
+  g.bezierCurveTo(x, y, x - s * 0.5, y, x - s * 0.5, y + s * 0.3);
+  g.bezierCurveTo(x - s * 0.5, y + s * 0.6, x, y + s * 0.8, x, y + s);
+  g.bezierCurveTo(x, y + s * 0.8, x + s * 0.5, y + s * 0.6, x + s * 0.5, y + s * 0.3);
+  g.bezierCurveTo(x + s * 0.5, y, x, y, x, y + s * 0.3);
+  if (filled) { g.fillStyle = color; g.fill(); } else { g.lineWidth = 3; g.strokeStyle = color; g.stroke(); }
+}
+function avatar(x, y, r, hue, ring = true) {
+  if (ring) { const gr = g.createLinearGradient(x - r, y - r, x + r, y + r); gr.addColorStop(0, PINK); gr.addColorStop(1, "#2a2622"); g.beginPath(); g.arc(x, y, r, 0, 7); g.fillStyle = gr; g.fill(); g.beginPath(); g.arc(x, y, r - 4, 0, 7); g.fillStyle = "#fff"; g.fill(); }
+  g.beginPath(); g.arc(x, y, ring ? r - 8 : r, 0, 7); g.fillStyle = hue; g.fill();
+}
+function statusBar() {
+  g.fillStyle = "#fff"; g.fillRect(0, 0, SW, SH);
+  txt("9:41", 70, 60, 26, 700);
+  rr(SW / 2 - 64, 24, 128, 40, 20); g.fillStyle = "#000"; g.fill();
+  for (let i = 0; i < 4; i++) { rr(SW - 150 + i * 10, 56 - (i + 1) * 6, 6, (i + 1) * 6, 2); g.fillStyle = INK; g.fill(); }
+  rr(SW - 100, 38, 46, 22, 6); g.lineWidth = 2.5; g.strokeStyle = INK; g.stroke(); rr(SW - 96, 42, 34, 14, 3); g.fillStyle = INK; g.fill();
+}
+function homeBar() { rr(SW / 2 - 90, SH - 24, 180, 9, 5); g.fillStyle = INK; g.fill(); }
+function tabBar() {
+  g.fillStyle = "#fff"; g.fillRect(0, SH - 120, SW, 120); g.fillStyle = "#e8e8e8"; g.fillRect(0, SH - 120, SW, 2);
+  g.lineWidth = 3.4; g.strokeStyle = INK; g.lineJoin = "round"; g.lineCap = "round";
+  const y = SH - 72, xs = [80, 190, 300, 410, 520];
+  g.beginPath(); g.moveTo(xs[0] - 22, y + 4); g.lineTo(xs[0], y - 18); g.lineTo(xs[0] + 22, y + 4); g.lineTo(xs[0] + 22, y + 22); g.lineTo(xs[0] - 22, y + 22); g.closePath(); g.stroke();
+  g.beginPath(); g.arc(xs[1] - 3, y - 2, 15, 0, 7); g.stroke(); g.beginPath(); g.moveTo(xs[1] + 9, y + 10); g.lineTo(xs[1] + 21, y + 22); g.stroke();
+  rr(xs[2] - 22, y - 20, 44, 44, 12); g.stroke(); g.beginPath(); g.moveTo(xs[2], y - 9); g.lineTo(xs[2], y + 13); g.moveTo(xs[2] - 11, y + 2); g.lineTo(xs[2] + 11, y + 2); g.stroke();
+  rr(xs[3] - 22, y - 20, 44, 44, 12); g.stroke(); g.beginPath(); g.moveTo(xs[3] - 6, y - 7); g.lineTo(xs[3] + 9, y + 2); g.lineTo(xs[3] - 6, y + 11); g.closePath(); g.stroke();
+  avatar(xs[4], y + 2, 22, "#2a2622");
+}
+function searchBox(y, label = "Search") {
+  rr(28, y, SW - 56, 56, 16); g.fillStyle = LIGHT; g.fill();
+  g.lineWidth = 3; g.strokeStyle = GREY; g.beginPath(); g.arc(60, y + 27, 10, 0, 7); g.stroke(); g.beginPath(); g.moveTo(67, y + 34); g.lineTo(75, y + 42); g.stroke();
+  txt(label, 88, y + 37, 24, 500, GREY);
+}
+function strike(x, y, w, p) { if (p <= 0) return; g.fillStyle = PINK; g.fillRect(x - 3, y, (w + 6) * p, 5); }
+
+const people = [["crypto_deals_4u", "Crypto Deals 💰"], ["mia_rose", "Mia"], ["gym.bro.daily", "Daily Gains"], ["luna.sky", "Luna"],
+  ["ex.from.2019", "you know who"], ["jayden.k", "Jayden"], ["random.giveaway", "WIN AN IPHONE"], ["noah_b", "Noah"],
+  ["meme.page.48213", "memes 24/7"], ["ava_eats", "Ava"], ["free.followers.now", "free followers"], ["zoe.art", "Zoe"], ["kai.waves", "Kai"]];
+const junk = new Set(["crypto_deals_4u", "gym.bro.daily", "ex.from.2019", "random.giveaway", "meme.page.48213", "free.followers.now"]);
+
+// Each scene has a timeline t (seconds). At t = scene.length it loops. finish() jumps to the "after" frame.
+const scenes = {
+  unfollow: {
+    length: 13,
+    draw(t) {
+      statusBar();
+      txt("‹", 40, 140, 54, 400); txt("you", SW / 2, 136, 30, 700, INK, "center");
+      const order = people.map((p, i) => ({ p, i })).filter(({ p }) => junk.has(p[0]));
+      const cutAt = (k) => 1.2 + k * 1.6;  // seconds when the k-th junk account gets struck
+      let removed = 0;
+      order.forEach((o, k) => { if (t > cutAt(k) + 0.9) removed++; });
+      const tabsY = 190;
+      [["1,203", "followers"], [`${812 - removed}`, "following"], ["", "Subscriptions"]].forEach(([n, l], i) => {
+        const x = 100 + i * 200;
+        if (n) txt(n, x, tabsY, 24, 700, i === 1 ? INK : GREY, "center");
+        txt(l, x, tabsY + (n ? 30 : 15), 22, 600, i === 1 ? INK : GREY, "center");
+      });
+      g.fillStyle = "#e8e8e8"; g.fillRect(0, tabsY + 50, SW, 2); g.fillStyle = INK; g.fillRect(200 + 30, tabsY + 48, 140, 4);
+      searchBox(tabsY + 74);
+      txt("Sorted by", 28, tabsY + 176, 22, 700); txt("Default", 136, tabsY + 176, 22, 500, GREY);
+      g.save(); g.beginPath(); g.rect(0, tabsY + 196, SW, SH - 120 - (tabsY + 196)); g.clip();
+      let y = tabsY + 214;
+      people.forEach(([h, n], i) => {
+        const k = order.findIndex((o) => o.i === i);
+        const p = k < 0 ? 0 : ease((t - cutAt(k)) / 0.35);
+        const gone = k < 0 ? 0 : ease((t - cutAt(k) - 0.9) / 0.4);
+        const rowH = 96 * (1 - gone);
+        if (rowH < 1) return;
+        g.globalAlpha = 1 - gone;
+        const cy = y + rowH / 2;
+        avatar(66, cy, 36, avatarHues[i % avatarHues.length]);
+        txt(h, 122, cy - 4, 25, 700, p > 0 ? "#555" : INK);
+        g.font = `700 25px ${FONT()}`; strike(122, cy - 14, g.measureText(h).width, p);
+        txt(n, 122, cy + 26, 22, 500, GREY);
+        const follow = p > 0.6;
+        rr(SW - 176, cy - 26, 148, 52, 14); g.fillStyle = follow ? PINK_DEEP : LIGHT; g.fill();
+        txt(follow ? "Follow" : "Following", SW - 102, cy + 8, 22, 700, follow ? "#fff" : INK, "center");
+        g.globalAlpha = 1;
+        y += rowH;
+      });
+      g.restore();
+      tabBar(); homeBar();
+    },
+  },
+  chats: {
+    length: 11,
+    draw(t) {
+      statusBar();
+      txt("‹", 40, 140, 54, 400); txt("you ⌄", 90, 136, 30, 700);
+      rr(SW - 92, 104, 52, 44, 10); g.lineWidth = 3; g.strokeStyle = INK; g.stroke();
+      searchBox(178, "Search");
+      txt("Messages", 28, 300, 27, 700); txt("Requests", SW - 28, 300, 24, 600, GREY, "right");
+      const chats = [["luna.sky", "Sent a reel · 2h", 0], ["old.class.chat", "Seen 14 months ago", 14], ["mia_rose", "haha yesss · 1d", 0],
+        ["promo.daily", "Seen 9 months ago", 9], ["jayden.k", "You: omw · 3d", 0], ["ex.from.2019", "Seen 2 years ago", 24],
+        ["noah_b", "Liked a message · 1w", 0], ["dm.for.collab", "Seen 7 months ago", 7], ["ava_eats", "Sent a photo · 3w", 0], ["kai.waves", "Seen 5 months ago", 5]];
+      const old = chats.map((c, i) => ({ c, i })).filter(({ c }) => c[2] >= 4);
+      const at = (k) => 1.4 + k * 1.5;
+      const deleted = old.filter((_, k) => t > at(k) + 0.8).length;
+      rr(28, 324, SW - 56, 50, 25); g.fillStyle = "#FFE8EF"; g.fill();
+      txt(`Deleting chats quiet for 4+ months · ${deleted} deleted`, SW / 2, 357, 21, 700, PINK_DEEP, "center");
+      g.save(); g.beginPath(); g.rect(0, 388, SW, SH - 120 - 388); g.clip();
+      let y = 396;
+      chats.forEach(([n, prev], i) => {
+        const k = old.findIndex((o) => o.i === i);
+        const slide = k < 0 ? 0 : ease((t - at(k)) / 0.45);
+        const gone = k < 0 ? 0 : ease((t - at(k) - 0.8) / 0.35);
+        const rowH = 104 * (1 - gone);
+        if (rowH < 1) return;
+        const cy = y + rowH / 2, dx = -slide * 190;
+        if (slide > 0) { g.fillStyle = PINK_DEEP; g.fillRect(SW - 190 * slide, y, 190 * slide + 2, rowH); txt("Delete", SW - 95 * slide, cy + 8, 23, 700, "#fff", "center"); }
+        g.save(); g.translate(dx, 0); g.globalAlpha = 1 - gone;
+        g.fillStyle = "#fff"; g.fillRect(0, y, SW, rowH);
+        avatar(70, cy, 40, avatarHues[i % avatarHues.length], false);
+        txt(n, 130, cy - 6, 25, 700); txt(prev, 130, cy + 26, 22, 500, k >= 0 ? PINK_DEEP : GREY);
+        g.restore();
+        y += rowH;
+      });
+      g.restore();
+      tabBar(); homeBar();
+    },
+  },
+  likes: {
+    length: 10,
+    draw(t) {
+      statusBar();
+      txt("‹", 40, 140, 54, 400); txt("Likes", SW / 2, 128, 30, 700, INK, "center"); txt("Your activity", SW / 2, 160, 21, 500, GREY, "center");
+      const n = 18, cols = 3, gap = 6, size = (SW - gap * (cols - 1)) / cols, top = 200;
+      const at = (k) => 0.8 + k * 0.42;
+      const unliked = Array.from({ length: n }, (_, k) => t > at(k) + 0.2).filter(Boolean).length;
+      for (let k = 0; k < n; k++) {
+        const cx0 = (k % cols) * (size + gap), cy0 = top + Math.floor(k / cols) * (size + gap);
+        if (cy0 > SH - 220) break;
+        const p = ease((t - at(k)) / 0.35);
+        const gr = g.createLinearGradient(cx0, cy0, cx0 + size, cy0 + size);
+        gr.addColorStop(0, avatarHues[k % avatarHues.length]); gr.addColorStop(1, avatarHues[(k + 3) % avatarHues.length]);
+        g.globalAlpha = 1 - p * 0.55; g.fillStyle = gr; g.fillRect(cx0, cy0, size, size);
+        g.globalAlpha = (1 - p * 0.55) * 0.25; g.fillStyle = "#fff";
+        if (k % 3 === 0) { g.beginPath(); g.arc(cx0 + size * 0.5, cy0 + size * 0.55, size * 0.22, 0, 7); g.fill(); }
+        else if (k % 3 === 1) { g.fillRect(cx0 + size * 0.2, cy0 + size * 0.6, size * 0.6, size * 0.14); }
+        else { g.beginPath(); g.moveTo(cx0 + size * 0.2, cy0 + size * 0.8); g.lineTo(cx0 + size * 0.5, cy0 + size * 0.3); g.lineTo(cx0 + size * 0.8, cy0 + size * 0.8); g.fill(); }
+        g.globalAlpha = 1;
+        heart(cx0 + size - 30, cy0 + 14, 30, p < 0.5, p < 0.5 ? PINK : "#fff");
+      }
+      g.fillStyle = "#fff"; g.fillRect(0, SH - 210, SW, 90);
+      rr(28, SH - 196, SW - 56, 62, 31); g.fillStyle = INK; g.fill();
+      txt(`Unliked ${unliked} of ${n}`, SW / 2, SH - 156, 25, 700, "#fff", "center");
+      tabBar(); homeBar();
+    },
+  },
+  nuke: {
+    length: 9,
+    draw(t) {
+      statusBar();
+      txt("you ⌄", 40, 136, 32, 700);
+      const p = ease((t - 1) / 3.2);
+      const fresh = ease((t - 4.6) / 0.6);
+      avatar(110, 250, 72, "#2a2622", p < 0.98);
+      [["posts", 214], ["followers", 1203], ["following", 812]].forEach(([l, v], i) => {
+        const x = 280 + i * 120;
+        txt(String(Math.round(v * (1 - p))), x, 248, 30, 700, INK, "center");
+        txt(l, x, 280, 21, 500, INK, "center");
+      });
+      const bio = [["Your Name ✦", 700], ["old bio from 2019", 500], ["linktr.ee/somewhere", 600]];
+      bio.forEach(([s, w], i) => {
+        const y = 370 + i * 34;
+        const sp = ease((t - 1.3 - i * 0.5) / 0.4);
+        g.globalAlpha = 1 - ease((t - 2.4 - i * 0.5) / 0.5);
+        txt(s, 40, y, 24, w, i === 2 ? "#1d4f91" : INK);
+        g.font = `${w} 24px ${FONT()}`; strike(40, y - 9, g.measureText(s).width, sp);
+        g.globalAlpha = 1;
+      });
+      rr(40, 480, 250, 56, 14); g.fillStyle = LIGHT; g.fill(); txt("Edit profile", 165, 516, 23, 700, INK, "center");
+      rr(306, 480, 250, 56, 14); g.fillStyle = LIGHT; g.fill(); txt("Share profile", 431, 516, 23, 700, INK, "center");
+      const size = (SW - 12) / 3;
+      for (let k = 0; k < 9; k++) {
+        const x = (k % 3) * (size + 6), y = 570 + Math.floor(k / 3) * (size + 6);
+        const fade = ease((t - 1.2 - k * 0.3) / 0.4);
+        g.globalAlpha = 1 - fade;
+        g.fillStyle = avatarHues[(k * 2) % avatarHues.length]; g.fillRect(x, y, size, size);
+        g.globalAlpha = 1;
+        if (fade > 0.99) { g.strokeStyle = "#eee"; g.lineWidth = 2; g.strokeRect(x + 1, y + 1, size - 2, size - 2); }
+      }
+      if (fresh > 0) {
+        g.globalAlpha = fresh; g.fillStyle = "rgba(255,255,255,.92)"; g.fillRect(0, 560, SW, 600);
+        txt("Fresh start.", SW / 2, 830, 52, 800, INK, "center");
+        txt("0 posts · 0 followers · 0 following", SW / 2, 880, 22, 600, GREY, "center");
+        g.globalAlpha = 1;
+      }
+      tabBar(); homeBar();
+    },
+  },
+};
+
+// ====================================================== three.js phone
+let renderer = null;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+} catch (e) { renderer = null; }
+
+const sceneButtons = [...document.querySelectorAll(".chipbtn")];
+let current = "unfollow", t0 = performance.now(), userPicked = false;
+const setScene = (name, user) => {
+  if (!scenes[name]) return;
+  current = name; t0 = performance.now(); if (user) userPicked = true;
+  sceneButtons.forEach((b) => b.setAttribute("aria-pressed", b.dataset.scene === name));
+  if (calm) { scenes[name].draw(scenes[name].length - 0.5); texture && (texture.needsUpdate = true); }
+};
+sceneButtons.forEach((b) => b.addEventListener("click", () => setScene(b.dataset.scene, true)));
+window.addEventListener("igut-scene", (e) => setScene(e.detail.scene, e.detail.user));
+
+let texture = null;
+if (!renderer) {
+  // No WebGL: show the live screen in a simple flat frame instead.
+  const flat = document.createElement("div"); flat.className = "flat"; flat.append(screen);
+  stage.replaceChildren(flat);
+  const loopFlat = () => { if (!window.igut.still) scenes[current].draw(((performance.now() - t0) / 1000) % scenes[current].length); requestAnimationFrame(loopFlat); };
+  calm ? scenes[current].draw(scenes[current].length - 0.5) : requestAnimationFrame(loopFlat);
+} else {
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  stage.prepend(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  const camera = new THREE.PerspectiveCamera(24, 1, 0.1, 50);
+  camera.position.set(0, 0, 5.4);
+  const key = new THREE.DirectionalLight(0xffffff, 1.4); key.position.set(2.5, 3, 4); scene.add(key);
+  const rim = new THREE.DirectionalLight(0xffc2d6, 1.1); rim.position.set(-3, 1.5, -2.5); scene.add(rim);
+
+  // Plus-size proportions (about 78 x 163 x 8.3 mm), continuous-looking corners.
+  const W = 0.778, H = 1.63, D = 0.083, R = 0.13, B = 0.016;
+  const shape = (w, h, r) => {
+    const s = new THREE.Shape(), x = -w / 2, y = -h / 2;
+    s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.bezierCurveTo(x + w - r * 0.35, y, x + w, y + r * 0.35, x + w, y + r);
+    s.lineTo(x + w, y + h - r); s.bezierCurveTo(x + w, y + h - r * 0.35, x + w - r * 0.35, y + h, x + w - r, y + h);
+    s.lineTo(x + r, y + h); s.bezierCurveTo(x + r * 0.35, y + h, x, y + h - r * 0.35, x, y + h - r);
+    s.lineTo(x, y + r); s.bezierCurveTo(x, y + r * 0.35, x + r * 0.35, y, x + r, y);
+    return s;
+  };
+  const flatUV = (geo, w, h) => {
+    const pos = geo.attributes.position, uv = geo.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / w + 0.5, pos.getY(i) / h + 0.5);
+    uv.needsUpdate = true;
+  };
+  const FINISHES = {
+    black: { frame: 0x2b2a27, back: 0x1e1d1b },
+    natural: { frame: 0xb9b4ab, back: 0xcfc9be },
+    desert: { frame: 0xc6a98a, back: 0xd8c2a6 },
+    cream: { frame: 0xd8cbb2, back: 0xeee1c6 },
+  };
+  const frameMat = new THREE.MeshPhysicalMaterial({ color: FINISHES.black.frame, metalness: 1, roughness: 0.28, clearcoat: 0.4, clearcoatRoughness: 0.2 });
+  const backMat = new THREE.MeshPhysicalMaterial({ color: FINISHES.black.back, metalness: 0.1, roughness: 0.42, clearcoat: 0.7, clearcoatRoughness: 0.35 });
+  const plateauMat = new THREE.MeshPhysicalMaterial({ color: FINISHES.black.back, metalness: 0.1, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05 });
+  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x030303, metalness: 0, roughness: 0.03, clearcoat: 1, clearcoatRoughness: 0.02 });
+
+  const phone = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.ExtrudeGeometry(shape(W - 2 * B, H - 2 * B, R - B), { depth: D - 2 * B, bevelEnabled: true, bevelThickness: B, bevelSize: B, bevelSegments: 10, curveSegments: 40 }), frameMat);
+  body.geometry.translate(0, 0, -(D - 2 * B) / 2);
+  phone.add(body);
+  const front = new THREE.Mesh(new THREE.ShapeGeometry(shape(W - 0.006, H - 0.006, R - 0.004), 40), glassMat);
+  front.position.z = D / 2 + 0.0006; phone.add(front);
+
+  texture = new THREE.CanvasTexture(screen);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  const sw = W - 0.046, sh = H - 0.046;
+  const scrGeo = new THREE.ShapeGeometry(shape(sw, sh, R - 0.028), 40); flatUV(scrGeo, sw, sh);
+  const scr = new THREE.Mesh(scrGeo, new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }));
+  scr.position.z = D / 2 + 0.0012; phone.add(scr);
+
+  // a faint moving reflection on the glass, so the screen doesn't look printed on
+  const sheenCanvas = document.createElement("canvas"); sheenCanvas.width = 4; sheenCanvas.height = 256;
+  const sg = sheenCanvas.getContext("2d"); const sgr = sg.createLinearGradient(0, 0, 0, 256);
+  sgr.addColorStop(0, "rgba(255,255,255,0)"); sgr.addColorStop(0.45, "rgba(255,255,255,.55)"); sgr.addColorStop(0.55, "rgba(255,255,255,0)"); sg.fillStyle = sgr; sg.fillRect(0, 0, 4, 256);
+  const sheenTex = new THREE.CanvasTexture(sheenCanvas);
+  const sheen = new THREE.Mesh(scrGeo.clone(), new THREE.MeshBasicMaterial({ map: sheenTex, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false }));
+  sheen.position.z = D / 2 + 0.0018; phone.add(sheen);
+
+  const back = new THREE.Mesh(new THREE.ShapeGeometry(shape(W - 0.006, H - 0.006, R - 0.004), 40), backMat);
+  back.rotation.y = Math.PI; back.position.z = -D / 2 - 0.0006; phone.add(back);
+
+  // camera plateau with three lenses, flash and mic, on the back's top-left (seen from behind)
+  const cam = new THREE.Group();
+  const PL = 0.34;
+  const plateau = new THREE.Mesh(new THREE.ExtrudeGeometry(shape(PL - 0.008, PL - 0.008, 0.085), { depth: 0.004, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: 4, curveSegments: 24 }), plateauMat);
+  cam.add(plateau);
+  const ringMat = new THREE.MeshPhysicalMaterial({ color: 0x8c8780, metalness: 1, roughness: 0.25 });
+  const lensMat = new THREE.MeshPhysicalMaterial({ color: 0x07090f, metalness: 0.3, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.02 });
+  const irisMat = new THREE.MeshBasicMaterial({ color: 0x1c2b4c });
+  [[-0.078, 0.078], [-0.078, -0.078], [0.08, 0]].forEach(([lx, ly]) => {
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.07, 0.022, 48), ringMat); ring.rotation.x = Math.PI / 2; ring.position.set(lx, ly, 0.016);
+    const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.024, 48), lensMat); lens.rotation.x = Math.PI / 2; lens.position.set(lx, ly, 0.018);
+    const iris = new THREE.Mesh(new THREE.CircleGeometry(0.02, 32), irisMat); iris.position.set(lx, ly, 0.0305);
+    cam.add(ring, lens, iris);
+  });
+  const flash = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.012, 32), new THREE.MeshPhysicalMaterial({ color: 0xf3ecd9, roughness: 0.3 }));
+  flash.rotation.x = Math.PI / 2; flash.position.set(0.08, 0.1, 0.012); cam.add(flash);
+  const mic = new THREE.Mesh(new THREE.CircleGeometry(0.008, 16), new THREE.MeshBasicMaterial({ color: 0x050505 })); mic.position.set(0.08, -0.1, 0.0125); cam.add(mic);
+  cam.rotation.y = Math.PI;  // face outwards from the back
+  cam.position.set(W / 2 - 0.035 - PL / 2, H / 2 - 0.035 - PL / 2, -D / 2 - 0.001);
+  phone.add(cam);
+
+  // side buttons: action + volume on the left, side button + camera control on the right
+  const btnMat = frameMat;
+  const sideBtn = (x, y, len, mat = btnMat) => {
+    const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.009, len, 6, 12), mat);
+    m.position.set(x, y, 0); phone.add(m);
+  };
+  sideBtn(-W / 2 - 0.004, 0.52, 0.05); sideBtn(-W / 2 - 0.004, 0.36, 0.11); sideBtn(-W / 2 - 0.004, 0.2, 0.11);
+  sideBtn(W / 2 + 0.004, 0.36, 0.17);
+  sideBtn(W / 2 + 0.004, -0.26, 0.07, new THREE.MeshPhysicalMaterial({ color: 0x1a1a1a, metalness: 0.4, roughness: 0.1, clearcoat: 1 }));
+
+  scene.add(phone);
+
+  // finish swatches recolour the frame and back
+  document.querySelectorAll(".sw").forEach((b) => b.addEventListener("click", () => {
+    const f = FINISHES[b.dataset.finish];
+    frameMat.color.setHex(f.frame); backMat.color.setHex(f.back); plateauMat.color.setHex(f.back);
+    document.querySelectorAll(".sw").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  }));
+
+  // sizing
+  const fit = () => {
+    const r = stage.getBoundingClientRect();
+    renderer.setSize(r.width, r.height, false);
+    camera.aspect = r.width / r.height;
+    // fit the phone (1.63 tall, ~0.95 wide when tilted) with a small margin for tilt and bob
+    camera.position.z = Math.max(1.8, 0.95 / camera.aspect) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+    camera.updateProjectionMatrix();
+  };
+  new ResizeObserver(fit).observe(stage); fit();
+
+  // interaction: tilt toward the mouse, drag to spin with momentum, ease back to face you
+  let rx = -0.06, ry = -0.42, trx = -0.06, tryy = -0.42, vel = 0, dragging = false, lastX = 0;
+  const hero = stage.closest("section");
+  hero.addEventListener("pointermove", (e) => {
+    if (dragging || e.pointerType !== "mouse") return;
+    const r = hero.getBoundingClientRect();
+    tryy = -0.42 + ((e.clientX - r.left) / r.width - 0.5) * 0.7;
+    trx = -0.06 - ((e.clientY - r.top) / r.height - 0.5) * 0.3;
+  });
+  stage.addEventListener("pointerdown", (e) => { dragging = true; lastX = e.clientX; vel = 0; stage.setPointerCapture(e.pointerId); });
+  stage.addEventListener("pointermove", (e) => { if (!dragging) return; const dx = e.clientX - lastX; lastX = e.clientX; ry += dx * 0.011; vel = dx * 0.011; });
+  const release = () => { dragging = false; };
+  stage.addEventListener("pointerup", release); stage.addEventListener("pointercancel", release);
+
+  // only render while visible
+  let visible = true;
+  // restart only on hidden -> visible; the loop is already running at load
+  new IntersectionObserver((es) => { const was = visible; visible = es[0].isIntersecting; if (visible && !was) { last = performance.now(); requestAnimationFrame(frame); } }, { threshold: 0.01 }).observe(stage);
+
+  const floor = document.getElementById("floor");
+  let last = performance.now(), lastDraw = 0;
+  function frame(now) {
+    if (!visible) return;
+    const dt = Math.min((now - last) / 1000, 0.05); last = now;
+    const still = window.igut.still;
+    // screen: redraw ~30 times a second while its scene plays
+    if (!still && now - lastDraw > 33) {
+      const t = (now - t0) / 1000;
+      const sc = scenes[current];
+      if (t > sc.length) {
+        if (userPicked) t0 = now;
+        else { const names = Object.keys(scenes); setScene(names[(names.indexOf(current) + 1) % names.length], false); }
+      }
+      sc.draw(((now - t0) / 1000) % sc.length);
+      texture.needsUpdate = true; lastDraw = now;
+    }
+    if (!dragging) {
+      if (Math.abs(vel) > 0.0015) { ry += vel; vel *= 0.95; }
+      else { const goal = tryy + Math.PI * 2 * Math.round((ry - tryy) / (Math.PI * 2)); ry += (goal - ry) * Math.min(1, dt * 3.5); }
+      rx += (trx - rx) * Math.min(1, dt * 4);
+    }
+    const bob = still ? 0 : Math.sin(now / 900) * 0.025;
+    phone.rotation.set(rx, ry, still ? 0 : Math.sin(now / 1600) * 0.012);
+    phone.position.y = bob;
+    floor.style.transform = `translateX(-50%) scale(${1 - bob * 2.5})`;
+    sheen.material.map.offset.y = ((ry % (Math.PI * 2)) / (Math.PI * 2)) * 1.2 - 0.3;
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  scenes[current].draw(calm ? scenes[current].length - 0.5 : 0.01);
+  texture.needsUpdate = true;
+  if (calm) { window.igut.still = true; }
+  requestAnimationFrame(frame);
+  window.addEventListener("igut-fonts", () => { scenes[current].draw(((performance.now() - t0) / 1000) % scenes[current].length); texture.needsUpdate = true; });
+}
+</script>
+</body>
+</html>

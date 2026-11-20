@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ig-ultimate-tool"
+version = "1.0.0"
+description = "Free, open-source Instagram toolkit: clean up followers, chats, posts, likes and more, plus an AI auto-reply. Runs on your own computer."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "soics" }]
+keywords = ["instagram", "unfollow", "cleanup", "automation", "chatbot"]
+classifiers = [
+  "Environment :: Console",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+]
+# Pinned: instagrapi changes its API between versions; every user must get the version we test against.
+dependencies = [
+  "instagrapi==3.2.19",
+  "rich>=13.7,<15",
+  "platformdirs>=4.2,<5",
+  "requests>=2.31,<3",
+  "anthropic==2.11.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+ig-ultimate = "ig_ultimate.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/soics/ig-ultimate-tool"
+Issues = "https://github.com/soics/ig-ultimate-tool/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ig_ultimate"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "UP", "S"]
+ignore = ["S101", "S311"]  # asserts in tests; random is only used for human-like pacing, not security
+
+[tool.ruff.lint.per-file-ignores]
+"src/ig_ultimate/fake.py" = ["S105"]  # pretend passwords that trigger the fake account's test paths
+"tests/*" = ["S105", "S106", "S310"]  # fake passwords; urlopen of the local test server

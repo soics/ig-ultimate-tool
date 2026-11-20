@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="400" viewBox="0 0 1280 400" role="img" aria-label="IG Ultimate Tool: your Instagram, cleaned up. Not by hand.">
+  <defs>
+    <radialGradient id="glow" cx="88%" cy="10%" r="70%"><stop offset="0" stop-color="#F8EEDA"/><stop offset="1" stop-color="#F0E4CC" stop-opacity="0"/></radialGradient>
+    <radialGradient id="low" cx="0%" cy="100%" r="60%"><stop offset="0" stop-color="#E3CFA8"/><stop offset="1" stop-color="#F0E4CC" stop-opacity="0"/></radialGradient>
+    <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="3" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 0.09  0 0 0 0 0.07  0 0 0 0 0.05  0 0 0 .17 0"/></filter>
+  </defs>
+  <rect width="1280" height="400" fill="#F0E4CC"/>
+  <rect width="1280" height="400" fill="url(#glow)"/>
+  <rect width="1280" height="400" fill="url(#low)"/>
+  <rect width="1280" height="400" filter="url(#grain)"/>
+  <g font-family="Geist, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#161310" fill-opacity=".07">
+    <text x="40" y="40">@crypto_deals_4u</text><text x="250" y="40">@luna.sky</text><text x="420" y="40">@ex.from.2019</text><text x="620" y="40">@jayden.k</text><text x="780" y="40">@random.giveaway</text><text x="1010" y="40">@noah_b</text><text x="1150" y="40">@ava_eats</text>
+    <text x="-20" y="372">@meme.page.48213</text><text x="210" y="372">@zoe.art</text><text x="350" y="372">@free.followers.now</text><text x="600" y="372">@mia_rose</text><text x="760" y="372">@gym.bro.daily</text><text x="960" y="372">@kai.waves</text><text x="1120" y="372">@promo.daily</text>
+  </g>
+  <g fill="#FF3D7F" fill-opacity=".55"><rect x="38" y="34" width="134" height="2.5"/><rect x="418" y="34" width="118" height="2.5"/><rect x="778" y="34" width="150" height="2.5"/><rect x="348" y="366" width="160" height="2.5"/><rect x="758" y="366" width="118" height="2.5"/></g>
+  <g font-family="Unbounded, 'Arial Black', Impact, sans-serif" font-weight="800" letter-spacing="-3">
+    <text x="64" y="160" font-size="74" fill="#161310">Your Instagram,</text>
+    <text x="64" y="240" font-size="74" fill="#161310">cleaned up.</text>
+    <text x="64" y="320" font-size="74" fill="#6B6152" textLength="540" lengthAdjust="spacingAndGlyphs">Not by hand.</text>
+  </g>
+  <rect x="56" y="295" width="560" height="9" rx="3" fill="#FF3D7F"/>
+  <g transform="translate(905 92)">
+    <rect width="300" height="216" rx="28" fill="#000"/>
+    <text x="28" y="62" font-family="Unbounded, 'Arial Black', Impact, sans-serif" font-size="27" font-weight="800" fill="#F0E4CC" letter-spacing="-1">IG Ultimate</text>
+    <text x="28" y="98" font-family="Unbounded, 'Arial Black', Impact, sans-serif" font-size="27" font-weight="800" fill="#F0E4CC" letter-spacing="-1">Tool</text>
+    <text x="28" y="140" font-family="Geist, Helvetica, Arial, sans-serif" font-size="16" fill="#BDB3A2">Free · open source · runs on</text>
+    <text x="28" y="162" font-family="Geist, Helvetica, Arial, sans-serif" font-size="16" fill="#BDB3A2">your own computer</text>
+    <rect x="28" y="178" width="118" height="22" rx="11" fill="#D41D57"/>
+    <text x="40" y="194" font-family="Geist, Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#fff">no login needed</text>
+  </g>
+</svg>

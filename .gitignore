@@ -1,0 +1,21 @@
+# Your Instagram login and settings live in your app-data folder, never here.
+# These patterns are a second line of defence in case someone copies them in.
+session.json
+settings.json
+*.session
+.env
+
+# Python / tooling
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+
+# local tool state
+.claude/
+.DS_Store
