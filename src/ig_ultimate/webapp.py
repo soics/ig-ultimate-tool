@@ -27,6 +27,7 @@ from .engine import Plan, Stopped
 
 MAX_BODY = 1_000_000
 PAGE_GONE_AFTER = 3.0  # seconds without the page checking in = the page was closed
+STATIC = {"/static/geist.woff2": "font/woff2", "/static/unbounded.woff2": "font/woff2"}
 
 
 def _int(value) -> int | None:
@@ -608,6 +609,9 @@ class Handler(BaseHTTPRequestHandler):
             html = page().replace(b"__TOKEN__", srv.token.encode())  # type: ignore[attr-defined]
             cookie = f"igut={srv.cookie}; HttpOnly; SameSite=Strict; Path=/"  # type: ignore[attr-defined]
             return self._send(200, html, "text/html", cookie=cookie)
+        if url.path in STATIC:  # the app's own fonts: exact names only, nothing else on disk is reachable
+            data = resources.files("ig_ultimate").joinpath("static", url.path.rsplit("/", 1)[1]).read_bytes()
+            return self._send(200, data, STATIC[url.path])
         if not self._authed():
             return self._send(403, {"error": "forbidden"})
         app: WebApp = self.server.app  # type: ignore[attr-defined]

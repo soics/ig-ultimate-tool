@@ -74,6 +74,16 @@ def test_locked_to_this_computer_and_the_secret_link(srv):
     assert call(srv, "/api/preview", b"{}", ctype="text/plain")[0] == 415  # plain HTML forms can't post here
 
 
+def test_fonts_are_served_locally_and_nothing_else_on_disk_is(srv):
+    for name in ("geist", "unbounded"):
+        status, data = call(srv, f"/static/{name}.woff2", token=False)
+        assert status == 200 and data[:4] == b"wOF2"
+    for probe in ("/static/../webapp.py", "/static/OFL-Geist.txt", "/static/", "/static/%2e%2e/webapp.py"):
+        assert call(srv, probe, token=False)[0] == 403  # not a known file: needs the token, then 404
+    port = srv.server_address[1]
+    assert call(srv, "/static/geist.woff2", token=False, host=f"evil.example:{port}")[0] == 403
+
+
 def test_pretend_account_never_leaks_into_the_real_one(srv):
     app = srv.app
     call(srv, "/api/preview", {})

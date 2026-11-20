@@ -53,8 +53,8 @@ def menu(title: str, options: list[tuple[str, str]], back: str = "Back") -> str:
     console.print()
     console.print(f"[bold]{title}[/]")
     for key, label in options:
-        console.print(f"  [bold cyan]{key}[/]  {label}")
-    console.print(f"  [bold cyan]0[/]  {back}")
+        console.print(f"  [bold #FF3D7F]{key}[/]  {label}")
+    console.print(f"  [bold #FF3D7F]0[/]  {back}")
     while True:
         choice = ask(">")
         if choice in ("0", ""):
@@ -167,7 +167,7 @@ class App:
             console.print("[green]Nothing here.[/]")
             return None
         for n, item in enumerate(plan.items, 1):
-            console.print(f"  [bold cyan]{n}[/]  {item.label}")
+            console.print(f"  [bold #FF3D7F]{n}[/]  {item.label}")
         raw = ask("Numbers to include, separated by commas (e.g. 1,4,7):").replace(",", " ").split()
         return {plan.items[int(n) - 1].id for n in raw if n.isdigit() and 1 <= int(n) <= len(plan.items)}
 
@@ -250,7 +250,7 @@ class App:
         for n, key in enumerate(keys, 1):
             label, _fn, experimental = tools.PROFILE_PARTS[key]
             console.print(
-                f"  [bold cyan]{n}[/]  {label}" + (" [dim](experimental)[/]" if experimental else "")
+                f"  [bold #FF3D7F]{n}[/]  {label}" + (" [dim](experimental)[/]" if experimental else "")
             )
         raw = ask("Numbers to do, separated by commas (empty = all):").replace(",", " ").split()
         parts = [keys[int(n) - 1] for n in raw if n.isdigit() and 1 <= int(n) <= len(keys)] or keys
@@ -334,7 +334,7 @@ class App:
         )
         steps = list(tools.NUKE_STEPS)
         for n, (_key, label, _build) in enumerate(steps, 1):
-            console.print(f"  [bold cyan]{n:>2}[/]  {label}")
+            console.print(f"  [bold #FF3D7F]{n:>2}[/]  {label}")
         raw = (
             ask("Press Enter to keep all steps, or type the numbers to SKIP (e.g. 3,9):")
             .replace(",", " ")
@@ -447,7 +447,7 @@ def run(preview: bool = False) -> int:
     console.print(
         Panel.fit(
             f"[bold]IG Ultimate Tool[/] {__version__}\nFree & open source. Runs only on your computer.",
-            border_style="magenta",
+            border_style="#FF3D7F",
         )
     )
     cfg = config.load()

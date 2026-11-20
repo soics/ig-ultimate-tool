@@ -3,75 +3,124 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src 'self'; connect-src 'self'; img-src 'self' data:; form-action 'none'; base-uri 'none'">
 <meta name="igut-token" content="__TOKEN__">
 <title>IG Ultimate Tool</title>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600..800&display=swap" rel="stylesheet">
 <style>
-:root { --cloud:#EEF2F7; --paper:#FFF; --ink:#18212F; --slate:#5B6778; --rule:#CBD3DE; --eraser:#FF4F81; --nuke:#D7263D; --ok:#1F8A5B;
-  --display:"Bricolage Grotesque",system-ui,sans-serif; --body:"Atkinson Hyperlegible",system-ui,sans-serif; }
-* { box-sizing:border-box; }
-body { margin:0; background:var(--cloud); color:var(--ink); font:1rem/1.55 var(--body); }
-button, input, select, textarea { font:inherit; color:inherit; }
-:focus-visible { outline:3px solid var(--eraser); outline-offset:2px; border-radius:6px; }
-h1, h2, h3 { font-family:var(--display); letter-spacing:-.02em; line-height:1.1; margin:0 0 .6rem; }
-h1 { font-size:2.4rem; } h2 { font-size:1.7rem; } h3 { font-size:1.2rem; }
-.muted { color:var(--slate); } .err { color:var(--nuke); font-weight:700; } .good { color:var(--ok); font-weight:700; }
-.btn { font-weight:700; padding:.7rem 1.1rem; border-radius:999px; border:2px solid var(--ink); background:var(--ink); color:#fff; cursor:pointer; }
-.btn:hover:not(:disabled) { background:var(--eraser); border-color:var(--eraser); }
-.btn.ghost { background:transparent; color:var(--ink); }
-.btn.ghost:hover:not(:disabled) { background:var(--ink); border-color:var(--ink); color:#fff; }
-.btn.danger { background:var(--nuke); border-color:var(--nuke); }
-.btn:disabled { opacity:.4; cursor:not-allowed; }
-input[type=text], input[type=password], input[type=number], select, textarea { width:100%; max-width:26rem; padding:.6rem .75rem; border:2px solid var(--rule); border-radius:12px; background:#fff; }
-textarea { min-height:5rem; }
-label.field { display:grid; gap:.3rem; margin:.8rem 0; font-weight:700; }
-label.check { display:flex; gap:.5rem; align-items:center; margin:.5rem 0; }
-.row { display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; margin-top:1rem; }
-.card { background:var(--paper); border-radius:18px; padding:1.5rem; }
+@font-face { font-family: "Geist"; src: url("/static/geist.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Unbounded"; src: url("/static/unbounded.woff2") format("woff2"); font-weight: 200 900; font-display: swap; }
+:root {
+  --cream: #F0E4CC; --cream-hi: #F8EEDA; --cream-lo: #E3CFA8; --paper: #FBF5E8; --black: #000; --ink: #161310;
+  --warm: #6B6152; --line: #DCCBAA; --pink: #FF3D7F; --pink-deep: #D41D57; --ok: #1E7A50;
+  --display: "Unbounded", "Arial Black", system-ui, sans-serif; --body: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --grain-dark: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.09  0 0 0 0 0.07  0 0 0 0 0.05  0 0 0 .17 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  --grain-light: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 .95  0 0 0 0 .88  0 0 0 .10 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body { margin: 0; min-height: 100vh; color: var(--ink); font: 1rem/1.55 var(--body);
+  background: var(--grain-dark), radial-gradient(90% 60% at 100% 0%, var(--cream-hi), transparent 60%), radial-gradient(80% 60% at 0% 100%, var(--cream-lo), transparent 62%), var(--cream); background-attachment: fixed; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--pink); outline-offset: 2px; border-radius: 8px; }
+h1, h2, h3 { font-family: var(--display); letter-spacing: -.03em; line-height: 1.08; margin: 0 0 .7rem; text-wrap: balance; }
+h1 { font-size: 2.1rem; } h2 { font-size: 1.6rem; } h3 { font-size: 1.12rem; }
+p, li, label { text-wrap: pretty; }
+.muted { color: var(--warm); } .err { color: var(--pink-deep); font-weight: 700; } .good { color: var(--ok); font-weight: 700; }
+.btn { display: inline-flex; align-items: center; gap: .45rem; min-height: 44px; font-weight: 700; padding: .65rem 1.15rem; border-radius: 999px; border: 2px solid var(--ink); background: var(--ink); color: var(--cream); cursor: pointer;
+  transition-property: transform, background-color, border-color, color; transition-duration: .15s; transition-timing-function: ease-out; }
+.btn:hover:not(:disabled) { background: var(--pink-deep); border-color: var(--pink-deep); color: #fff; }
+.btn:active:not(:disabled) { transform: scale(.96); }
+.btn.ghost { background: transparent; color: var(--ink); }
+.btn.ghost:hover:not(:disabled) { background: var(--ink); border-color: var(--ink); color: var(--cream); }
+.btn.danger { background: var(--pink-deep); border-color: var(--pink-deep); color: #fff; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+input[type=text], input[type=password], input[type=number], select, textarea { width: 100%; max-width: 26rem; padding: .65rem .8rem; border: 2px solid var(--line); border-radius: 14px; background: #fff; transition: border-color .15s; }
+input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: none; }
+textarea { min-height: 5rem; }
+label.field { display: grid; gap: .3rem; margin: .8rem 0; font-weight: 700; }
+label.check { display: flex; gap: .55rem; align-items: center; margin: .35rem 0; min-height: 36px; cursor: pointer; }
+input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-color: var(--pink-deep); }
+.row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-top: 1rem; }
+.card { background: var(--grain-dark), var(--paper); border-radius: 26px; padding: 1.6rem; border: 1px solid var(--line); box-shadow: 0 30px 60px -45px rgba(22,19,16,.6); }
 
-header { display:flex; flex-wrap:wrap; gap:1rem; align-items:center; justify-content:space-between; padding:1rem 1.25rem; }
-header .brand { font:800 1.15rem/1 var(--display); }
-header .who { display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; }
-.pill { padding:.3rem .7rem; border-radius:999px; background:#fff; border:1px solid var(--rule); font-size:.9rem; }
-.pill.preview { border-color:var(--eraser); color:var(--eraser); }
+/* header band */
+header { background: var(--grain-light), radial-gradient(60% 140% at 85% 0%, rgba(255,61,127,.22), transparent 60%), var(--black); color: var(--cream); }
+header .in { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; max-width: 1240px; margin: 0 auto; }
+header .brand { font: 800 1.1rem/1 var(--display); letter-spacing: -.02em; }
+.who { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.pill { padding: .35rem .8rem; border-radius: 999px; border: 1.5px solid #3a3530; font-size: .88rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pill.preview { border-color: var(--pink); color: var(--pink); }
 
-#login { max-width:30rem; margin:4vh auto; padding:0 1rem; }
-#app { display:grid; grid-template-columns:14rem 1fr; gap:1.5rem; padding:0 1.25rem 12rem; max-width:1200px; margin:0 auto; }
-@media (max-width:780px) { #app { grid-template-columns:1fr; } }
-nav { display:flex; flex-direction:column; gap:.3rem; }
-@media (max-width:780px) { nav { flex-direction:row; flex-wrap:wrap; } }
-nav button { text-align:left; padding:.6rem .9rem; border-radius:12px; border:0; background:transparent; cursor:pointer; font-weight:700; }
-nav button[aria-current="true"] { background:var(--ink); color:#fff; }
-nav button.nuke { color:var(--nuke); } nav button.nuke[aria-current="true"] { background:var(--nuke); color:#fff; }
-.tools { display:grid; gap:.5rem; margin-bottom:1.5rem; }
-.tools button { text-align:left; padding:.8rem 1rem; border-radius:12px; border:2px solid var(--rule); background:#fff; cursor:pointer; font-weight:700; }
-.tools button[aria-pressed="true"] { border-color:var(--ink); }
-.list { max-height:24rem; overflow:auto; border:1px solid var(--rule); border-radius:12px; padding:.5rem .9rem; margin:.75rem 0; columns:2 16rem; }
-.list label { display:flex; gap:.5rem; break-inside:avoid; padding:.15rem 0; }
-.warn { background:#FFF4E5; border-radius:12px; padding:.75rem 1rem; margin:.75rem 0; }
-table { border-collapse:collapse; width:100%; max-width:34rem; margin:.75rem 0; }
-td { padding:.35rem .5rem; border-bottom:1px solid var(--rule); } td:last-child { text-align:right; font-weight:700; }
+/* login */
+#login { max-width: 30rem; margin: 6vh auto; padding: 0 1rem; perspective: 1200px; }
+#loginCard { transition: transform .4s ease-out; transform-style: preserve-3d; }
+#login h1 { font-size: 2rem; }
+#login .strike { position: relative; color: var(--warm); white-space: nowrap; }
+#login .strike::after { content: ""; position: absolute; left: -2%; right: -2%; top: 54%; height: .12em; background: var(--pink); border-radius: 3px; }
 
-#job { position:fixed; left:0; right:0; bottom:0; background:var(--ink); color:#fff; padding:1rem 1.25rem; max-height:45vh; overflow:auto; }
-#job[hidden] { display:none; }
-#job .bar { height:.5rem; background:#ffffff33; border-radius:99px; overflow:hidden; margin:.5rem 0; }
-#job .bar span { display:block; height:100%; background:var(--eraser); width:0; transition:width .3s; }
-#job pre { white-space:pre-wrap; font:.9rem/1.45 var(--body); margin:.5rem 0 0; max-height:9rem; overflow:auto; color:#d8dee8; }
-#job .btn { border-color:#fff; }
-pre.log { white-space:pre-wrap; background:#fff; border:1px solid var(--rule); border-radius:12px; padding:.75rem; max-height:18rem; overflow:auto; font:.92rem/1.45 var(--body); }
+/* app */
+#app { display: grid; grid-template-columns: 14.5rem 1fr; gap: 1.5rem; padding: 1.5rem 1.25rem 13rem; max-width: 1240px; margin: 0 auto; }
+@media (max-width: 800px) { #app { grid-template-columns: 1fr; } }
+nav { display: flex; flex-direction: column; gap: .3rem; }
+@media (max-width: 800px) { nav { flex-direction: row; flex-wrap: wrap; } }
+nav button { text-align: left; min-height: 44px; padding: .55rem 1rem; border-radius: 14px; border: 0; background: transparent; cursor: pointer; font-weight: 700; transition-property: background-color, color; transition-duration: .15s; }
+nav button:hover { background: rgba(22,19,16,.07); }
+nav button[aria-current="true"] { background: var(--ink); color: var(--cream); }
+nav button.nuke { color: var(--pink-deep); }
+nav button.nuke[aria-current="true"] { background: var(--pink-deep); color: #fff; }
+.tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .6rem; margin-bottom: 1.5rem; }
+.tools button { text-align: left; min-height: 56px; padding: .8rem 1rem; border-radius: 16px; border: 2px solid var(--line); background: #fff; cursor: pointer; font-weight: 700;
+  transition-property: transform, border-color, box-shadow; transition-duration: .15s; }
+.tools button:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -18px rgba(22,19,16,.6); }
+.tools button[aria-pressed="true"] { border-color: var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+.list { max-height: 24rem; overflow: auto; border: 1px solid var(--line); background: #fff; border-radius: 16px; padding: .5rem .9rem; margin: .75rem 0; columns: 2 16rem; }
+.list label { display: flex; gap: .5rem; align-items: center; break-inside: avoid; padding: .2rem 0; min-height: 32px; }
+.list label.off span { text-decoration: line-through; text-decoration-color: var(--ok); color: var(--warm); }
+.warn { background: #FFF1E2; border: 1px solid #F3D3B0; border-radius: 14px; padding: .75rem 1rem; margin: .75rem 0; }
+table { border-collapse: collapse; width: 100%; max-width: 36rem; margin: .75rem 0; font-variant-numeric: tabular-nums; }
+td { padding: .45rem .5rem; border-bottom: 1px solid var(--line); }
+td:last-child { text-align: right; font-weight: 700; }
+pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: .8rem; max-height: 18rem; overflow: auto; font: .92rem/1.45 var(--body); }
+
+/* job panel */
+#job { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--grain-light), var(--black); color: var(--cream); padding: 1rem 1.25rem 1.2rem; max-height: 46vh; overflow: auto; box-shadow: 0 -20px 40px -20px rgba(0,0,0,.5); }
+#job[hidden] { display: none; }
+#job .in { max-width: 1240px; margin: 0 auto; }
+#job .bar { height: .55rem; background: #ffffff22; border-radius: 99px; overflow: hidden; margin: .6rem 0; }
+#job .bar span { display: block; height: 100%; background: var(--pink); width: 0; transition: width .3s ease-out; }
+#job pre { white-space: pre-wrap; font: .9rem/1.45 var(--body); margin: .5rem 0 0; max-height: 9rem; overflow: auto; color: #D2C8B6; }
+#job .btn { border-color: var(--cream); color: var(--cream); background: transparent; }
+#jobCount { font-variant-numeric: tabular-nums; }
+
+/* swipe review */
+#review { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 1rem; background: var(--grain-light), radial-gradient(600px circle at 50% 40%, rgba(255,61,127,.25), transparent 60%), rgba(0,0,0,.92); color: var(--cream); }
+#review[hidden] { display: none; }
+#review .box { width: min(380px, 100%); text-align: center; }
+#review .deck { position: relative; height: 330px; perspective: 1100px; margin: 1.2rem 0; }
+.rcard { position: absolute; inset: 0; border-radius: 28px; background: var(--grain-dark), var(--paper); color: var(--ink); padding: 1.6rem; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: .8rem; touch-action: none; cursor: grab;
+  box-shadow: 0 30px 60px -30px rgba(255,61,127,.5); transition-property: transform, opacity; transition-duration: .3s; transition-timing-function: cubic-bezier(.2,.8,.2,1); }
+.rcard.drag { transition: none; cursor: grabbing; }
+.rcard .face { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; font: 800 1.8rem/1 var(--display); color: #fff; background: var(--ink); }
+.rcard .lbl { font: 800 1.2rem/1.2 var(--display); letter-spacing: -.02em; overflow-wrap: anywhere; }
+.rstamp { position: absolute; top: 1.2rem; padding: .25rem .7rem; border: 3px solid; border-radius: 10px; font: 800 1rem/1 var(--display); opacity: 0; }
+.rstamp.go { right: 1rem; color: var(--pink-deep); transform: rotate(-12deg); }
+.rstamp.keep { left: 1rem; color: var(--ok); transform: rotate(12deg); }
+#review .ctl { display: flex; gap: .7rem; justify-content: center; flex-wrap: wrap; }
+#review .btn { border-color: var(--cream); background: transparent; color: var(--cream); }
+#review .btn.solid { background: var(--cream); color: var(--black); }
+#review .count { font-variant-numeric: tabular-nums; color: #D2C8B6; }
+
+@media (prefers-reduced-motion: reduce) { .rcard, #loginCard, .tools button, #job .bar span { transition: none; } }
 </style>
 </head>
 <body>
-<header>
-  <span class="brand">IG Ultimate Tool</span>
-  <div class="who" id="who"></div>
-</header>
+<header><div class="in"><span class="brand">IG Ultimate Tool</span><div class="who" id="who"></div></div></header>
 
 <section id="login" hidden>
-  <div class="card">
-    <h1>Log in to Instagram</h1>
-    <p class="muted">Your password goes straight to Instagram from this computer and is never saved.</p>
+  <div class="card" id="loginCard">
+    <h1>Your Instagram, cleaned up. <span class="strike">Not by hand.</span></h1>
+    <p class="muted">Log in to start. Your password goes straight to Instagram from this computer and is never saved.</p>
     <p class="muted" id="remembered" hidden>You're remembered on this computer: just press Log in.</p>
     <label class="field">Username <input type="text" id="u" autocomplete="username"></label>
     <label class="field">Password <input type="password" id="p" autocomplete="current-password"></label>
@@ -91,18 +140,34 @@ pre.log { white-space:pre-wrap; background:#fff; border:1px solid var(--rule); b
 </div>
 
 <section id="job" hidden aria-live="polite">
-  <div class="row" style="margin:0;justify-content:space-between"><strong id="jobTitle"></strong><span id="jobCount"></span>
-    <button class="btn ghost" id="stopBtn" type="button">Stop</button>
-    <button class="btn ghost" id="closeBtn" type="button">Close</button></div>
-  <div class="bar"><span id="jobBar"></span></div>
-  <div id="jobResult"></div>
-  <pre id="jobLog"></pre>
+  <div class="in">
+    <div class="row" style="margin:0;justify-content:space-between"><strong id="jobTitle"></strong><span id="jobCount"></span>
+      <span><button class="btn" id="stopBtn" type="button">Stop</button> <button class="btn" id="closeBtn" type="button">Close</button></span></div>
+    <div class="bar"><span id="jobBar"></span></div>
+    <div id="jobResult"></div>
+    <pre id="jobLog"></pre>
+  </div>
+</section>
+
+<section id="review" hidden role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
+  <div class="box">
+    <h2 id="reviewTitle">Review one by one</h2>
+    <p class="count" id="reviewCount"></p>
+    <div class="deck" id="rdeck"></div>
+    <div class="ctl">
+      <button class="btn solid" type="button" id="rGo">← Do it</button>
+      <button class="btn" type="button" id="rKeep">Keep →</button>
+    </div>
+    <div class="row" style="justify-content:center"><button class="btn" type="button" id="rDone">Done reviewing</button></div>
+    <p class="count">Drag left to do it, right to keep (or use the arrow keys). Nothing runs until you press Do it and type yes.</p>
+  </div>
 </section>
 
 <script>
 (() => {
   const T = document.querySelector('meta[name="igut-token"]').content;
   history.replaceState(null, "", "/");  // the one-time code in the address bar is used up; hide it
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const $ = (id) => document.getElementById(id);
   const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids.filter((k) => k != null)); return n; };
   let S = {}, C = {}, section = "Followers";
@@ -117,12 +182,20 @@ pre.log { white-space:pre-wrap; background:#fff; border:1px solid var(--rule); b
   }
   const say = (node, text, cls = "") => { node.className = cls; node.textContent = text; };
 
-  // ---------------------------------------------------------------- login
+  // ---------------------------------------------------------------- login (the card tilts a little with the mouse)
+  const lc = $("loginCard");
+  $("login").addEventListener("pointermove", (e) => {
+    if (calm || e.pointerType !== "mouse" || e.target.closest("button, input, a")) return;  // hold still where you click or type
+    const r = lc.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+    lc.style.transform = `rotateY(${x * 5}deg) rotateX(${-y * 5}deg)`;
+  });
+  $("login").addEventListener("pointerleave", () => (lc.style.transform = ""));
   $("loginBtn").onclick = async () => {
     try { await api("/api/login", { username: $("u").value, password: $("p").value }); $("p").value = ""; say($("loginMsg"), "Logging in..."); }
     catch (e) { say($("loginMsg"), e.message, "err"); }
   };
-  $("previewBtn").onclick = () => api("/api/preview", {}).then(refresh);
+  $("previewBtn").onclick = () => api("/api/preview", {}).then(refresh).catch((e) => say($("loginMsg"), e.message, "err"));
   $("codeBtn").onclick = async () => { await api("/api/answer", { text: $("code").value }); $("code").value = ""; };
 
   // ---------------------------------------------------------------- sections
@@ -176,11 +249,20 @@ pre.log { white-space:pre-wrap; background:#fff; border:1px solid var(--rule); b
     if (plan.experimental) notes.push(el("p", { className: "warn", textContent: "Experimental: this uses an Instagram feature we couldn't fully test yet. If it fails, nothing else is affected." }));
     if (plan.resumable) notes.push(el("p", { className: "muted", textContent: `A previous run stopped after ${plan.resumable}. It will continue where it left off.` }));
     if (plan.count > plan.items.length) notes.push(el("p", { className: "muted", textContent: `Showing the first ${plan.items.length}. Full list: ${plan.list_file}` }));
-    const boxes = plan.items.map(([id, label]) => { const c = el("input", { type: "checkbox", checked: true }); c.dataset.id = id; return [c, el("label", {}, c, label)]; });
+    const boxes = plan.items.map(([id, label]) => {
+      const c = el("input", { type: "checkbox", checked: true }); c.dataset.id = id;
+      const l = el("label", {}, c, el("span", { textContent: label }));
+      c.onchange = () => l.classList.toggle("off", !c.checked);
+      return [c, l, label];
+    });
     const listBox = el("div", { className: "list" }, ...boxes.map((b) => b[1]));
     if (tool.readonly) { boxes.forEach(([c]) => (c.hidden = true)); out.replaceChildren(head, ...notes, listBox); return; }
+    const sync = () => boxes.forEach(([c, l]) => l.classList.toggle("off", !c.checked));
     const all = el("button", { className: "btn ghost", type: "button", textContent: "Untick all" });
-    all.onclick = () => { const on = all.textContent === "Tick all"; boxes.forEach(([c]) => (c.checked = on)); all.textContent = on ? "Untick all" : "Tick all"; };
+    all.onclick = () => { const on = all.textContent === "Tick all"; boxes.forEach(([c]) => (c.checked = on)); sync(); all.textContent = on ? "Untick all" : "Tick all"; };
+    const verb = plan.title.split(" ")[0];
+    const review = el("button", { className: "btn ghost", type: "button", textContent: "Review one by one" });
+    review.onclick = () => openReview(boxes, verb, sync);
     const yes = el("input", { type: "text", placeholder: "type yes", ariaLabel: "Type yes to confirm" });
     yes.style.maxWidth = "9rem";
     const doIt = el("button", { className: "btn", type: "button", textContent: "Do it", disabled: true });
@@ -194,8 +276,66 @@ pre.log { white-space:pre-wrap; background:#fff; border:1px solid var(--rule); b
     };
     dry.onclick = () => run(true);
     doIt.onclick = () => run(false);
-    out.replaceChildren(head, ...notes, el("p", { className: "muted", textContent: "Untick anything you want to keep." }), el("div", { className: "row" }, all), listBox,
-      el("div", { className: "row" }, dry, yes, doIt), msg);
+    out.replaceChildren(head, ...notes, el("p", { className: "muted", textContent: "Untick anything you want to keep, or review them one by one." }),
+      el("div", { className: "row" }, review, all), listBox, el("div", { className: "row" }, dry, yes, doIt), msg);
+  }
+
+  // ---------------------------------------------------------------- swipe review: left = do it, right = keep
+  let reviewKeys = null;
+  function openReview(boxes, verb, sync) {
+    const queue = boxes.slice();
+    let i = 0;
+    const deck = $("rdeck");
+    const total = queue.length;
+    const counter = () => ($("reviewCount").textContent = i < total ? `${i + 1} of ${total}` : `All ${total} reviewed`);
+    const close = () => { $("review").hidden = true; document.removeEventListener("keydown", reviewKeys); sync(); };
+    const show = () => {
+      counter();
+      deck.replaceChildren();
+      if (i >= total) { deck.append(el("div", { className: "rcard" }, el("div", { className: "lbl", textContent: "All done." }), el("p", { className: "muted", textContent: "Your choices are ticked in the list." }))); return; }
+      for (let k = Math.min(i + 2, total - 1); k >= i; k--) {
+        const [, , label] = queue[k];
+        const depth = k - i;
+        const card = el("div", { className: "rcard" },
+          el("div", { className: "rstamp go", textContent: verb.toUpperCase() }), el("div", { className: "rstamp keep", textContent: "KEEP" }),
+          el("div", { className: "face", textContent: label.replace(/^@/, "").charAt(0).toUpperCase() || "?" }), el("div", { className: "lbl", textContent: label }));
+        card.style.transform = `translate3d(0, ${depth * 16}px, ${-depth * 50}px) scale(${1 - depth * 0.04})`;
+        card.style.opacity = depth > 1 ? "0.6" : "1";
+        if (depth === 0) bindCard(card);
+        deck.append(card);
+      }
+    };
+    const decide = (keep) => {
+      if (i >= total) return;
+      queue[i][0].checked = !keep;
+      const top = deck.lastElementChild;
+      if (top) { top.style.transform = `translate3d(${keep ? 480 : -480}px, -30px, 0) rotate(${keep ? 24 : -24}deg)`; top.style.opacity = "0"; }
+      i += 1;
+      setTimeout(show, calm ? 0 : 220);
+    };
+    function bindCard(card) {
+      let sx = 0, dx = 0, on = false;
+      card.addEventListener("pointerdown", (e) => { on = true; sx = e.clientX; dx = 0; card.classList.add("drag"); card.setPointerCapture(e.pointerId); });
+      card.addEventListener("pointermove", (e) => {
+        if (!on) return;
+        dx = e.clientX - sx;
+        card.style.transform = `translate3d(${dx}px, 0, 30px) rotate(${dx / 16}deg) rotateY(${dx / 14}deg)`;
+        card.querySelector(".rstamp.go").style.opacity = String(Math.min(1, Math.max(0, -dx / 110)));
+        card.querySelector(".rstamp.keep").style.opacity = String(Math.min(1, Math.max(0, dx / 110)));
+      });
+      const end = () => { if (!on) return; on = false; card.classList.remove("drag"); if (Math.abs(dx) > 110) decide(dx > 0); else { card.style.transform = ""; card.querySelectorAll(".rstamp").forEach((s) => (s.style.opacity = "0")); } };
+      card.addEventListener("pointerup", end);
+      card.addEventListener("pointercancel", end);
+    }
+    $("rKeep").onclick = () => decide(true);
+    $("rGo").onclick = () => decide(false);
+    $("rGo").textContent = `← ${verb}`;
+    $("rDone").onclick = close;
+    reviewKeys = (e) => { if (e.key === "ArrowLeft") decide(false); else if (e.key === "ArrowRight") decide(true); else if (e.key === "Escape") close(); };
+    document.addEventListener("keydown", reviewKeys);
+    $("review").hidden = false;
+    show();
+    $("rGo").focus();
   }
 
   // ---------------------------------------------------------------- nuke
