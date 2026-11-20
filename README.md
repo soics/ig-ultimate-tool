@@ -25,7 +25,7 @@ No modded Instagram app, no paying a social media manager, no giving your passwo
 | 🙍 **Profile** | Clear your bio, link and name · remove your profile picture · make the account private |
 | ☢️ **Nuke** | All of the above in a safe order, to get a brand-new-looking account. Two confirmations plus a 5-second countdown you can cancel |
 | 🤖 **AI auto-reply** | Answers DMs as you: **everyone**, only your **whitelist**, or only **usernames you paste**. Understands photos, memes, voice notes and reels. Free with Groq, or use Gemini, OpenRouter, Ollama, OpenAI, Claude, Claude Code or Codex |
-| 🔎 **Username finder** | Hunts for a rare, clean username: short and rare words, words from 18 languages, luxury and dark styles, invented names. Every name gets an explainable quality score, the best are checked first at a human pace, and you claim a free one yourself (or let it claim automatically, unofficial and opt-in). Runs only while the page is open, remembers everything per account. Most short names are taken, so it can take days |
+| 🔎 **Username finder** (username sniper) | Looks for a short, cool username nobody has yet. It makes a list of names (short words, words from 18 languages, made-up names), gives each a score so the best go first, and checks them slowly, like a person would. When it finds a free one, you grab it. Most short names are taken, so it can take days |
 
 Everything that changes your account shows you the full list first, offers a **dry run**, and only starts after you type `yes`.
 
@@ -182,16 +182,46 @@ The same steps show in the app when you pick an AI. Open the one you chose:
 - **Codex** can read **every file your user account can**, whatever folder you pick. Only use it with people you trust completely.
 </details>
 
-## Username finder
+## Username finder (username sniper)
 
-1. Open **Username finder** > **Generator** and pick a style (Ultra OG, short or rare words, multilingual, luxury, dark, invented, letters + numbers, balanced, or your own list). 3-6 characters is the default sweet spot.
-2. **Discovery** shows the best names not checked yet. Open one to see why it scored what it did. Star the ones you love (they're tried first), hide the ones you don't: the ranking learns your taste.
-3. **Hunter** > **Start hunting**. It checks about 120 names an hour and slows down by itself when Instagram asks.
-4. A name with no account shows up in **Results** as *possibly available*. That isn't proof (Instagram keeps names of banned accounts), so: copy it, change your username in the Instagram app, then press *I changed it: check my account*.
+**What it does, in one sentence:** it keeps checking cool short names, one by one, until it finds one that nobody on Instagram is using.
 
-**Automatic claiming** is there too, but Instagram has no official way to claim a username, so it uses the same unofficial connection as the rest of the app. It's off unless you tick the box and type your username for that hunt, it renames your account the moment a name goes through (your old one becomes free for anyone), and the hunt stops after a confirmed success.
+**Want to try it without logging in first?** Open the tool and pick *Try everything on a pretend account first*. The pretend account has one free name (`quill`) for the finder to find, so you can watch the whole thing work safely.
 
-**It only hunts while the page is open.** Switching tabs or minimizing is fine. Close the page (or let the laptop sleep) and it stops within seconds, keeping its progress; press Start to go on. In the terminal version it hunts while that window is open and Ctrl+C stops it.
+**How to use it (4 steps):**
+
+1. Click **Username finder** in the menu, then the **Generator** tab. Pick the kind of names you like:
+   - **OG path (recommended)**: the default. It goes step by step and finishes each step before the next:
+     1. real words (4 letters or more) from many languages,
+     2. real 3-letter words,
+     3. every 3-character name (letters first, then letters with numbers),
+     4. every 4-letter name, the easiest to say first.
+   - **Balanced (a bit of everything)**: takes turns between all the kinds below, 3 to 6 characters.
+   - **Ultra OG**: every 3-character name. Almost all are taken, but they're the most wanted. (1- and 2-character names aren't hunted: every one was taken years ago.)
+   - **Every 4-letter name**: all 456,976 of them, easiest to say first. At full speed that's about 80 days.
+   - **Short dictionary** (3-4 letters) or **Premium dictionary** (5-6 letters): real words, like `zen` or `quill`.
+   - **Rare vocabulary**: real but unusual words.
+   - **Multilingual**: nice words from 18 languages.
+   - **Luxury editorial** or **Dark minimal**: names with that feeling.
+   - **Invented premium**: made-up names that are easy to say.
+   - **Structured alphanumeric**: short mixes of letters and numbers.
+   - **Your own names**: type names you thought of yourself.
+2. Click the **Discovery** tab. It shows the best names it hasn't checked yet. Click a name to see *why* it got its score. Press the ⭐ star on names you love (they get checked first) and hide names you don't like. It learns what you like.
+3. Click the **Hunter** tab, then **Start hunting**. Now leave it running. It checks about **240 names an hour** (one every 10 to 20 seconds), and if Instagram says "slow down", it waits by itself.
+4. When it finds a name with no account, it shows up in the **Results** tab as **possibly available**. To grab it:
+   1. Copy the name.
+   2. Open the Instagram app → your profile → **Edit profile** → **Username**, paste it and save.
+   3. Back in the tool, press **I changed it in the app: check my account**. It checks that the name is really yours now.
+
+**Why "possibly"?** Sometimes Instagram keeps a name for itself (for example from a banned account), so a name can look free and still be blocked. The only way to know for sure is to try it in the app.
+
+**Automatic grabbing (optional, off by default).** The tool can also grab the name for you the second it finds one. Before you turn it on, know this:
+- Instagram has no official button for this, so it uses the same unofficial connection as the rest of the tool.
+- It's off until you tick the box *and* type your username for that hunt, so it can't happen by accident.
+- The moment it works, your account gets the new name and **your old name becomes free for anyone to take**.
+- It stops hunting after it gets a name.
+
+**It only hunts while the page is open.** Switching tabs or minimizing is fine. If you close the page (or the laptop goes to sleep), it stops within a few seconds and keeps its progress. Press **Start hunting** again to continue. In the black-window version, it hunts while that window is open, and **Ctrl+C** stops it.
 
 ## Questions
 
@@ -229,5 +259,7 @@ Every tool is a *plan* (targets + one action) run by one safe-action engine (`sr
 </details>
 
 ---
+
+<sub>Keywords: Instagram multi-tool, Instagram username sniper, username finder, username checker, OG username, Instagram mass unfollower, unfollow non-followers, Instagram cleaner, Instagram AI chatbot, Instagram AI auto-reply, Instagram DM bot.</sub>
 
 Built on [instagrapi](https://github.com/subzeroid/instagrapi). Not affiliated with, endorsed by, or connected to Instagram or Meta. [MIT license](LICENSE): free to use, change and share, with no warranty.

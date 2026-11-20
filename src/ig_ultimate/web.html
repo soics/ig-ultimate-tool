@@ -471,7 +471,7 @@ fieldset.langs { border: 1px solid var(--line); border-radius: 14px; display: fl
     addEventListener("pagehide", () => fetch("/api/hunt/beat", { method: "POST", keepalive: true, headers: { "X-Token": T, "Content-Type": "application/json" }, body: beatBody(true) }).catch(() => {}));
   })();
 
-  const H = { tab: "Hunter", preset: "balanced", min: "", max: "", langs: [], mode: "manual", ov: null, q: { q: "", status: "", favorites: false, excluded: false, offset: 0 }, at: 0 };
+  const H = { tab: "Hunter", preset: "og", min: "", max: "", langs: [], mode: "manual", ov: null, q: { q: "", status: "", favorites: false, excluded: false, offset: 0 }, at: 0 };
   const HTABS = ["Hunter", "Discovery", "Generator", "Queue", "Results", "Security"];
   const STATE = { ready: "Not started", running: "Hunting", paused: "Paused", stopped: "Stopped", expired: "Stopped: dashboard closed", won: "Got one", blocked: "Stopped: needs your attention", error: "Stopped: error" };
   const presetOf = (k) => C.hunt_presets.find((p) => p.key === k) || C.hunt_presets[0];
@@ -601,7 +601,7 @@ fieldset.langs { border: 1px solid var(--line); border-radius: 14px; display: fl
     }, "btn");
     p.replaceChildren(el("label", { className: "field" }, "Style", preset), el("div", { className: "row" }, el("label", { className: "field" }, "Shortest", min), el("label", { className: "field" }, "Longest", max)),
       el("p", { className: "muted", textContent: "3-6 characters is the sweet spot. 1-2 character names are kept in, but Instagram may not allow them any more: only a claim attempt can tell." }),
-      el("fieldset", { className: "langs", hidden: !["multi", "balanced"].includes(H.preset) }, el("legend", { textContent: "Languages (none ticked = all)" }), ...langs.map((x) => x[1])),
+      el("fieldset", { className: "langs", hidden: !["multi", "balanced", "og"].includes(H.preset) }, el("legend", { textContent: "Languages (none ticked = all)" }), ...langs.map((x) => x[1])),
       el("h3", { textContent: "Your own names" }), el("label", { className: "field" }, "Names (spaces or commas). Accents are removed: élan becomes elan.", mine), el("label", { className: "field" }, "When", prio), el("div", { className: "row" }, add), out);
   }
 

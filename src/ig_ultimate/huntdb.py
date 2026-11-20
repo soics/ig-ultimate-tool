@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS history (
 CORRUPT = re.compile(r"not a database|malformed|corrupt", re.I)
 GEN_VERSION = "2"  # bump when a generator's output changes, so categories get topped up again
 MAX_CUSTOM = 500
+OPEN = {"invented": names.invented, "four": names.four}  # too big to store at once: added in batches
 
 
 class HuntBusy(RuntimeError):
@@ -126,6 +127,12 @@ class Store:
         if self.db.execute("PRAGMA quick_check").fetchone()[0] != "ok":
             raise sqlite3.DatabaseError("database disk image is malformed (quick_check failed)")
         self.db.executescript(SCHEMA)
+        with self.db:  # v1.3.0 filed "already exists" refusals as unknown and kept retrying them
+            self.db.execute(
+                "UPDATE candidates SET status='held', attempts=0, next_at=checked_at + ? "
+                "WHERE status='unknown' AND note LIKE '%refused the change%already exists%'",
+                (RECHECK["held"],),
+            )
 
     def close(self):
         with self.lock:
@@ -200,25 +207,27 @@ class Store:
             return self.db.total_changes - before
 
     def ensure(self, categories) -> None:
-        """Generate each finite category once; the open-ended invented one is topped up in batches."""
+        """Generate each finite category once; the open-ended ones are topped up in batches."""
         for cat in categories:
             if cat in ("custom",):
                 continue
-            if cat == "invented":
-                self.top_up()
+            if cat in OPEN:
+                self.top_up(cat)
             elif self.get(f"ingested:{cat}") != GEN_VERSION:
                 self._insert((n, cat) for n in names.generate(cat))
                 self.put(f"ingested:{cat}", GEN_VERSION)
 
-    def top_up(self, low: int = 200, batch: int = 500) -> None:
+    def top_up(self, cat: str = "invented", low: int = 200, batch: int = 500) -> None:
         left = self._read(
-            "SELECT COUNT(*) FROM candidates WHERE tags LIKE '%,invented,%' AND status='unchecked'"
+            "SELECT COUNT(*) FROM candidates WHERE tags LIKE ? AND status='unchecked'", (f"%,{cat},%",)
         )[0][0]
         if left >= low:
             return
-        got = list(itertools.islice(names.invented(int(self.get("cursor:invented", "0"))), batch))
-        self._insert((name, "invented") for _i, name in got)
-        self.put("cursor:invented", got[-1][0] + 1)
+        got = list(itertools.islice(OPEN[cat](int(self.get(f"cursor:{cat}", "0"))), batch))
+        if not got:  # a finite open space (every 4-letter name) can run out
+            return
+        self._insert((name, cat) for _i, name in got)
+        self.put(f"cursor:{cat}", got[-1][0] + 1)
 
     def add_custom(self, raw: list[str], priority: int = 1) -> dict:
         """Your own names. priority: 1 = before everything, 0 = by score, -1 = after everything."""
@@ -262,8 +271,9 @@ class Store:
 
     def pick(self, cats, min_len=1, max_len=30, langs=(), skip=(), now=None) -> str | None:
         """The next name worth checking: favourites, then your priority, then retries of names that got
-        no answer, then the best score. Names with a trusted result wait for their recheck time.
-        Starred names and custom names marked "first" are tried in every hunt, whatever its style."""
+        no answer, then never-checked names, then the best score. Names with a trusted result wait for
+        their recheck time. Starred names and custom names marked "first" are tried in every hunt,
+        whatever its style."""
         where, args = self._where(cats, min_len, max_len, langs)
         never = ",".join("?" * len(NEVER_PICK))
         skip = list(skip)
@@ -274,6 +284,7 @@ class Store:
             f"AND next_at <= ? {not_these} "
             "ORDER BY favorite DESC, priority DESC, "
             "status IN ('rate_limited', 'unknown', 'possibly_available') DESC, "
+            "status = 'unchecked' DESC, "  # never-tried names before rechecks of taken/held ones
             "score + adj DESC, rowid LIMIT 1"
         )
         row = self._read(sql, [*args, *NEVER_PICK, now or time.time(), *skip])
@@ -283,16 +294,19 @@ class Store:
         r = self._read(f"SELECT {FIELDS} FROM candidates WHERE name=?", (name,))  # noqa: S608
         return _row(r[0]) if r else None
 
-    def mark(self, name: str, status: str, detail: str = "", soon: bool = False) -> None:
-        """Record one result (and its history line) in a single transaction. soon = no recheck wait."""
+    def mark(
+        self, name: str, status: str, detail: str = "", soon: bool = False, wait: float | None = None
+    ) -> None:
+        """Record one result (and its history line) in a single transaction. soon = no recheck wait;
+        wait = seconds before a recheck, instead of the status's usual time."""
         if status not in STATUSES:
             raise ValueError(f"unknown status {status!r}")
         now = time.time()
         with self.lock, self.db:
             r = self.db.execute("SELECT attempts FROM candidates WHERE name=?", (name,)).fetchone()
             tries = (r[0] if r else 0) + (status in ("unknown", "rate_limited"))
-            wait = 0.0 if soon else RECHECK.get(status, 0.0)
-            if status == "unknown" and tries >= 3:
+            wait = 0.0 if soon else RECHECK.get(status, 0.0) if wait is None else wait
+            if status == "unknown" and tries >= 3 and wait < DAY:
                 wait = DAY  # three times no answer: leave it a day instead of hammering it
             self.db.execute(
                 "INSERT INTO candidates (name, category, tags, score, status) "
@@ -302,7 +316,9 @@ class Store:
             )
             self.db.execute(
                 "UPDATE candidates SET attempts=?, checked_at=?, next_at=?, note=? WHERE name=?",
-                (0 if status in ("taken", "held", "possibly_available") else tries, now, now + wait,
+                # possibly_available keeps the count: a lookup that finds nobody must not reset the
+                # "three times no answer" brake on a claim that keeps failing.
+                (0 if status in ("taken", "held") else tries, now, now + wait,
                  detail[:200], name),
             )  # fmt: skip
             self.db.execute(

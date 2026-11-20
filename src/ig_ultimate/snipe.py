@@ -17,7 +17,7 @@ same one every tool in this app uses). Automatic claiming therefore runs through
 is OFF unless you authorize it for one account and one session, and the default is to find names and
 let you claim them yourself in the Instagram app.
 
-Pace: one account, ~120 lookups an hour, at most one claim every 3 minutes, and it backs off when
+Pace: one account, ~240 lookups an hour, at most one claim every 3 minutes, and it backs off when
 Instagram says slow down. It never switches accounts or hides what it is to get around limits.
 """
 
@@ -42,14 +42,15 @@ EXPLAIN = (
     "Pick a style (short words, rare words, other languages, invented names...). Every name gets a "
     "quality score you can open, and you can star or hide names to teach it your taste.\n"
     "Be realistic: almost every short name is taken or held by Instagram, so a hunt can run for days. "
-    "It checks about 120 names an hour and pauses by itself when Instagram says slow down. It only runs "
+    "It checks about 240 names an hour and pauses by itself when Instagram says slow down. It only runs "
     "while this page is open: close the page and it stops within seconds, keeping its progress.\n"
     "'No account has it' is not proof a name is free. By default you claim it yourself in the Instagram "
     "app. Automatic claiming is unofficial (Instagram has no official way to do it), must be switched "
     "on each time, and RENAMES your account straight away: your old username becomes free for anyone."
 )
-LOOKUP_GAP = (20.0, 40.0)  # seconds between lookups: ~120 an hour, like someone browsing profiles
+LOOKUP_GAP = (10.0, 20.0)  # seconds between lookups: ~240 an hour; a "slow down" still backs off
 CLAIM_GAP = 180.0  # at most one username change attempt every 3 minutes
+CLAIM_REFUSED = 7 * 86400.0  # a change refused for a reason we don't recognise: not tried again for a week
 BACKOFF = (15 * 60.0, 2 * 3600.0)  # "too many requests": 15 min, doubling, max 2 h
 OFFLINE = (60.0, 15 * 60.0)  # no connection: 1 min, doubling, max 15 min, then the same name again
 IDLE = 300.0  # every name has a fresh result: look again in 5 minutes
@@ -77,6 +78,7 @@ HELD_WORDS = (
     "already taken",
     "is taken",
     "another account",
+    "already exists",  # "A user with that username already exists." while the lookup finds nobody
 )
 INVALID_WORDS = ("can only use", "not allowed", "invalid", "can't contain", "cannot contain", "only numbers")
 LIMIT_WORDS = ("too many", "try again later", "14 days", "change your username", "limit")
@@ -266,7 +268,7 @@ class Hunter:
         me: str,
         *,
         log: Callable[[str], None],
-        preset: str = "balanced",
+        preset: str = "og",
         min_len: int | None = None,
         max_len: int | None = None,
         langs=(),
@@ -275,10 +277,10 @@ class Hunter:
         sleep: Callable[[float], object] | None = None,
         clock: Callable[[], float] = time.monotonic,
     ):
-        label, cats, _profile, lo, hi = names.PRESETS.get(preset, names.PRESETS["balanced"])
+        label, cats, _profile, lo, hi = names.PRESETS.get(preset, names.PRESETS["og"])
         self.v, self.store, self.account_id, self.me = verifier, store, str(account_id), me.lower()
         self.preset, self.cats, self.langs = (
-            preset if preset in names.PRESETS else "balanced",
+            preset if preset in names.PRESETS else "og",
             cats,
             tuple(langs),
         )
@@ -428,10 +430,11 @@ class Hunter:
         return ""
 
     def _next(self, lanes) -> str | None:
-        for _ in self.cats:
-            cat = next(lanes)
-            if cat == "invented":
-                self.store.top_up()
+        staged = self.preset in names.STAGED  # in order: a later style only once the earlier ones are done
+        for i in range(len(self.cats)):
+            cat = self.cats[i] if staged else next(lanes)
+            if cat in huntdb.OPEN:
+                self.store.top_up(cat)
             name = self.store.pick([cat], self.min_len, self.max_len, self.langs, skip=[self.me])
             if name:
                 return name
@@ -485,7 +488,14 @@ class Hunter:
             )
             self.log(f"@{name}: Instagram said yes, but your account still shows @{seen[1]}. Moving on.")
         else:
-            self.store.mark(name, "unknown" if ans.retry else ans.status, ans.detail)
+            # A refusal is an answer: retrying it every 10 minutes only burns username-change attempts.
+            refused = ans.status == "unknown" and not ans.retry and not ans.stop
+            self.store.mark(
+                name,
+                "unknown" if ans.retry else ans.status,
+                ans.detail,
+                wait=CLAIM_REFUSED if refused else None,
+            )
             self.log(f"@{name}: {huntdb.STATUSES.get(ans.status, ans.status)}. {ans.detail}".strip())
         self.last = {"name": name, "status": ans.status}
         if ans.stop:

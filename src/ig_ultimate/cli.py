@@ -401,8 +401,8 @@ class App:
         keys = list(names.PRESETS)
         for i, k in enumerate(keys, 1):
             console.print(f"  {i:>2}. {names.PRESETS[k][0]}")
-        raw = ask("Which style? Type a number, or press Enter for Balanced:")
-        preset = keys[int(raw) - 1] if raw.isdigit() and 1 <= int(raw) <= len(keys) else "balanced"
+        raw = ask("Which style? Type a number, or press Enter for the OG path:")
+        preset = keys[int(raw) - 1] if raw.isdigit() and 1 <= int(raw) <= len(keys) else "og"
         verifier = snipe.InstagrapiVerifier(self.cl)
         account_id, me = verifier.account()
         store = huntdb.Store(account_id)

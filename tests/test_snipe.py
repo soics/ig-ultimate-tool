@@ -140,6 +140,59 @@ def test_username_change_limit_is_not_mistaken_for_held():
     assert store.row("quill")["status"] == "unknown"  # v1 wrongly buried every later free name as held
 
 
+def test_og_path_finishes_each_step_before_the_next():
+    from ig_ultimate import names
+
+    store = huntdb.Store("1000")
+    h = snipe.Hunter(snipe.InstagrapiVerifier(FakeClient()), store, "1000", "you", log=print)
+    assert h.preset == "og" and snipe.LOOKUP_GAP == (10.0, 20.0)  # the default, ~240 lookups an hour
+    store.ensure(h.cats)
+    lex = names.lexicon()
+    for tag, check in (
+        ("words", lambda n: n in lex and len(n) >= 4),  # 1. real words
+        ("words3", lambda n: n in lex and len(n) == 3),  # 2. real 3-letter words
+        ("ultra", lambda n: len(n) == 3),  # 3. every 3-character name
+        ("four", lambda n: len(n) == 4 and n.isalpha()),  # 4. every 4-letter name
+    ):
+        got = h._next(None)
+        assert check(got), (tag, got)
+        store.db.execute(f"UPDATE candidates SET status='taken', next_at=1e18 WHERE tags LIKE '%,{tag},%'")  # noqa: S608
+
+
+def test_already_exists_is_held_and_the_hunt_moves_on():
+    cl = FakeClient()
+    cl.free_names.add("folio")  # the lookup finds nobody...
+    real, tried = cl.account_edit, []
+
+    def edit(**data):
+        tried.append(data["username"])
+        if data["username"] == "folio":  # live reply on 2026-11-20: the lookup found nobody
+            raise ig_errors.ClientError("{'errors': ['A user with that username already exists.']}")
+        return real(**data)
+
+    cl.account_edit = edit
+    h, cl, store, _, _ = make(cl, names=("folio", "quill"), first=("folio",))
+    assert h.run() == "quill" and tried == ["folio", "quill"]
+    assert store.row("folio")["status"] == "held"
+
+
+def test_a_refused_claim_is_not_retried_every_few_minutes(monkeypatch):
+    cl = FakeClient()
+    cl.free_names = {"zen", "quill"}
+    tried = []
+
+    def refuse(**data):
+        tried.append(data["username"])
+        raise ig_errors.ClientError("something Instagram never said before")
+
+    cl.account_edit = refuse
+    h, cl, store, clock, _ = make(cl, max_checks=10**6)  # runs a whole (fake) day
+    monkeypatch.setattr(huntdb.time, "time", lambda: 1e9 + clock.t)  # recheck times follow the fake clock
+    assert h.run() == "" and clock.t >= 86400
+    assert sorted(tried) == ["quill", "zen"]  # once each, not every 10 minutes
+    assert store.row("zen")["next_at"] >= 1e9 + snipe.CLAIM_REFUSED
+
+
 def test_a_yes_from_instagram_is_not_success_until_the_account_shows_it():
     cl = FakeClient()
     cl.account_edit = lambda **data: cl._account  # replies OK, but nothing changed
@@ -298,8 +351,8 @@ def test_stop_arriving_while_the_claim_is_written_down_sends_nothing():
     h, cl, store, _, _ = make(names=("quill",), first=())
     real = store.mark
 
-    def mark(name, status, detail="", soon=False):
-        real(name, status, detail, soon)
+    def mark(name, status, detail="", soon=False, wait=None):
+        real(name, status, detail, soon, wait)
         if status == "claiming":
             h.stop()
 

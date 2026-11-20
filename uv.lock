@@ -2,8 +2,8 @@ version = 1
 revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
-    "sys_platform == 'android'",
     "python_full_version >= '3.12' and sys_platform == 'emscripten'",
+    "sys_platform == 'android'",
     "(python_full_version < '3.12' and sys_platform == 'emscripten') or (sys_platform != 'android' and sys_platform != 'emscripten')",
 ]
 
@@ -421,7 +421,7 @@ wheels = [
 
 [[package]]
 name = "ig-ultimate-tool"
-version = "1.3.0"
+version = "1.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
