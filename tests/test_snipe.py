@@ -66,11 +66,13 @@ def test_an_unclear_username_check_never_spends_a_claim(monkeypatch):
     zen = store.row("zen")
     assert zen["status"] == "possibly_available" and zen["next_at"] - zen["checked_at"] == snipe.CHECK_OFF
     assert any("No claim spent" in s for s in logs)
-    store.mark("zen", "possibly_available")  # still no answer the second time: wait days, not 30 min
+    store.mark("zen", "possibly_available", soon=True)  # due again; still no answer: skipped for good
     h, *_ = make(cl, names=(), first=(), max_checks=1)
     h.store = store
     h.run()
-    assert store.row("zen")["next_at"] - store.row("zen")["checked_at"] >= huntdb.DAY
+    assert store.row("zen")["status"] == "held"
+    assert not [c for c in cl.calls if c[0] == "account_edit"]
+    assert store.pick(["custom"], now=huntdb.time.time() + 10**9) != "zen"
 
 
 def test_a_slow_down_from_the_username_check_never_stalls_the_hunt():
