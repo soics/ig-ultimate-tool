@@ -140,6 +140,40 @@ def test_username_change_limit_is_not_mistaken_for_held():
     assert store.row("quill")["status"] == "unknown"  # v1 wrongly buried every later free name as held
 
 
+def test_already_exists_is_held_and_the_hunt_moves_on():
+    cl = FakeClient()
+    cl.free_names.add("folio")  # the lookup finds nobody...
+    real, tried = cl.account_edit, []
+
+    def edit(**data):
+        tried.append(data["username"])
+        if data["username"] == "folio":  # live reply on 2026-11-20: the lookup found nobody
+            raise ig_errors.ClientError("{'errors': ['A user with that username already exists.']}")
+        return real(**data)
+
+    cl.account_edit = edit
+    h, cl, store, _, _ = make(cl, names=("folio", "quill"), first=("folio",))
+    assert h.run() == "quill" and tried == ["folio", "quill"]
+    assert store.row("folio")["status"] == "held"
+
+
+def test_a_refused_claim_is_not_retried_every_few_minutes(monkeypatch):
+    cl = FakeClient()
+    cl.free_names = {"zen", "quill"}
+    tried = []
+
+    def refuse(**data):
+        tried.append(data["username"])
+        raise ig_errors.ClientError("something Instagram never said before")
+
+    cl.account_edit = refuse
+    h, cl, store, clock, _ = make(cl, max_checks=10**6)  # runs a whole (fake) day
+    monkeypatch.setattr(huntdb.time, "time", lambda: 1e9 + clock.t)  # recheck times follow the fake clock
+    assert h.run() == "" and clock.t >= 86400
+    assert sorted(tried) == ["quill", "zen"]  # once each, not every 10 minutes
+    assert store.row("zen")["next_at"] >= 1e9 + snipe.CLAIM_REFUSED
+
+
 def test_a_yes_from_instagram_is_not_success_until_the_account_shows_it():
     cl = FakeClient()
     cl.account_edit = lambda **data: cl._account  # replies OK, but nothing changed
@@ -298,8 +332,8 @@ def test_stop_arriving_while_the_claim_is_written_down_sends_nothing():
     h, cl, store, _, _ = make(names=("quill",), first=())
     real = store.mark
 
-    def mark(name, status, detail="", soon=False):
-        real(name, status, detail, soon)
+    def mark(name, status, detail="", soon=False, wait=None):
+        real(name, status, detail, soon, wait)
         if status == "claiming":
             h.stop()
 

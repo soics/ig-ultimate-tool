@@ -262,8 +262,9 @@ class Store:
 
     def pick(self, cats, min_len=1, max_len=30, langs=(), skip=(), now=None) -> str | None:
         """The next name worth checking: favourites, then your priority, then retries of names that got
-        no answer, then the best score. Names with a trusted result wait for their recheck time.
-        Starred names and custom names marked "first" are tried in every hunt, whatever its style."""
+        no answer, then never-checked names, then the best score. Names with a trusted result wait for
+        their recheck time. Starred names and custom names marked "first" are tried in every hunt,
+        whatever its style."""
         where, args = self._where(cats, min_len, max_len, langs)
         never = ",".join("?" * len(NEVER_PICK))
         skip = list(skip)
@@ -274,6 +275,7 @@ class Store:
             f"AND next_at <= ? {not_these} "
             "ORDER BY favorite DESC, priority DESC, "
             "status IN ('rate_limited', 'unknown', 'possibly_available') DESC, "
+            "status = 'unchecked' DESC, "  # never-tried names before rechecks of taken/held ones
             "score + adj DESC, rowid LIMIT 1"
         )
         row = self._read(sql, [*args, *NEVER_PICK, now or time.time(), *skip])
@@ -283,16 +285,19 @@ class Store:
         r = self._read(f"SELECT {FIELDS} FROM candidates WHERE name=?", (name,))  # noqa: S608
         return _row(r[0]) if r else None
 
-    def mark(self, name: str, status: str, detail: str = "", soon: bool = False) -> None:
-        """Record one result (and its history line) in a single transaction. soon = no recheck wait."""
+    def mark(
+        self, name: str, status: str, detail: str = "", soon: bool = False, wait: float | None = None
+    ) -> None:
+        """Record one result (and its history line) in a single transaction. soon = no recheck wait;
+        wait = seconds before a recheck, instead of the status's usual time."""
         if status not in STATUSES:
             raise ValueError(f"unknown status {status!r}")
         now = time.time()
         with self.lock, self.db:
             r = self.db.execute("SELECT attempts FROM candidates WHERE name=?", (name,)).fetchone()
             tries = (r[0] if r else 0) + (status in ("unknown", "rate_limited"))
-            wait = 0.0 if soon else RECHECK.get(status, 0.0)
-            if status == "unknown" and tries >= 3:
+            wait = 0.0 if soon else RECHECK.get(status, 0.0) if wait is None else wait
+            if status == "unknown" and tries >= 3 and wait < DAY:
                 wait = DAY  # three times no answer: leave it a day instead of hammering it
             self.db.execute(
                 "INSERT INTO candidates (name, category, tags, score, status) "
@@ -302,7 +307,9 @@ class Store:
             )
             self.db.execute(
                 "UPDATE candidates SET attempts=?, checked_at=?, next_at=?, note=? WHERE name=?",
-                (0 if status in ("taken", "held", "possibly_available") else tries, now, now + wait,
+                # possibly_available keeps the count: a lookup that finds nobody must not reset the
+                # "three times no answer" brake on a claim that keeps failing.
+                (0 if status in ("taken", "held") else tries, now, now + wait,
                  detail[:200], name),
             )  # fmt: skip
             self.db.execute(

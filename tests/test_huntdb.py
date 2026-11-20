@@ -43,6 +43,25 @@ def test_results_are_trusted_until_their_recheck_time():
     assert s.row("lumen")["next_at"] > time.time() + 0.9 * huntdb.DAY  # 3x no answer: leave it a day
 
 
+def test_fresh_names_come_before_rechecks_of_names_that_failed():
+    s = huntdb.Store("1")
+    s.add_custom(["lumen", "zzxq"], 0)  # lumen scores higher
+    s.mark("lumen", "taken")
+    later = time.time() + huntdb.RECHECK["taken"] + 1
+    assert s.pick(["custom"], now=later) == "zzxq"  # its recheck is due, but a never-tried name goes first
+    s.mark("zzxq", "held")
+    assert s.pick(["custom"], now=later + huntdb.RECHECK["held"]) == "lumen"  # only once nothing new is left
+
+
+def test_a_lookup_that_finds_nobody_keeps_the_no_answer_count():
+    s = huntdb.Store("1")
+    s.add_custom(["lumen"], 0)
+    for _ in range(3):  # what a claim that keeps failing looks like: free on lookup, refused on claim
+        s.mark("lumen", "possibly_available", soon=True)
+        s.mark("lumen", "unknown")
+    assert s.row("lumen")["next_at"] > time.time() + 0.9 * huntdb.DAY
+
+
 def test_starred_and_first_names_join_every_hunt_style():
     s = huntdb.Store("1")
     s.ensure(["dark"])

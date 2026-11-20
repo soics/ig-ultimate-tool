@@ -50,6 +50,7 @@ EXPLAIN = (
 )
 LOOKUP_GAP = (20.0, 40.0)  # seconds between lookups: ~120 an hour, like someone browsing profiles
 CLAIM_GAP = 180.0  # at most one username change attempt every 3 minutes
+CLAIM_REFUSED = 7 * 86400.0  # a change refused for a reason we don't recognise: not tried again for a week
 BACKOFF = (15 * 60.0, 2 * 3600.0)  # "too many requests": 15 min, doubling, max 2 h
 OFFLINE = (60.0, 15 * 60.0)  # no connection: 1 min, doubling, max 15 min, then the same name again
 IDLE = 300.0  # every name has a fresh result: look again in 5 minutes
@@ -77,6 +78,7 @@ HELD_WORDS = (
     "already taken",
     "is taken",
     "another account",
+    "already exists",  # "A user with that username already exists." while the lookup finds nobody
 )
 INVALID_WORDS = ("can only use", "not allowed", "invalid", "can't contain", "cannot contain", "only numbers")
 LIMIT_WORDS = ("too many", "try again later", "14 days", "change your username", "limit")
@@ -485,7 +487,14 @@ class Hunter:
             )
             self.log(f"@{name}: Instagram said yes, but your account still shows @{seen[1]}. Moving on.")
         else:
-            self.store.mark(name, "unknown" if ans.retry else ans.status, ans.detail)
+            # A refusal is an answer: retrying it every 10 minutes only burns username-change attempts.
+            refused = ans.status == "unknown" and not ans.retry and not ans.stop
+            self.store.mark(
+                name,
+                "unknown" if ans.retry else ans.status,
+                ans.detail,
+                wait=CLAIM_REFUSED if refused else None,
+            )
             self.log(f"@{name}: {huntdb.STATUSES.get(ans.status, ans.status)}. {ans.detail}".strip())
         self.last = {"name": name, "status": ans.status}
         if ans.stop:
