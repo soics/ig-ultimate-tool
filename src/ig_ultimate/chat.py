@@ -71,7 +71,8 @@ Rules:
 def _utc(dt: datetime | None) -> datetime:
     if dt is None:
         return datetime.min.replace(tzinfo=UTC)
-    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+    # instagrapi gives DM times as naive *local* time (datetime.fromtimestamp), not UTC
+    return dt.astimezone(UTC)
 
 
 class Bot:
@@ -91,6 +92,7 @@ class Bot:
         self.sent: deque[float] = deque()
         self.sent_per_chat: dict[str, deque[float]] = {}
         self.system = system_prompt(a)
+        self.told: set[str] = set()  # message requests we already explained in the log
 
     def _mine(self, m) -> bool:
         return bool(getattr(m, "is_sent_by_viewer", False)) or str(m.user_id) == self.me
@@ -133,7 +135,11 @@ class Bot:
         data = ai.fetch_media(str(url)) if with_media and url else None
         return [data] if data else []
 
-    def handle(self, t) -> bool:
+    @staticmethod
+    def _who(t) -> str:
+        return t.thread_title or ", ".join(f"@{u.username}" for u in (t.users or [])[:2]) or "someone"
+
+    def handle(self, t, pending: bool = False) -> bool:
         tid = str(t.id)
         msgs = sorted(t.messages or [], key=lambda m: _utc(m.timestamp))
         cursor = self.cursor.get(tid, self.since)
@@ -146,6 +152,7 @@ class Bot:
             return False
         if self.allowed is not None:
             if any(str(m.user_id) not in self.allowed for m in new):
+                self.log(f"Not answering {self._who(t)}: not on your reply list.")
                 return False  # someone not on your list is talking here (e.g. in a group): stay out
             msgs = [
                 m for m in msgs if self._mine(m) or str(m.user_id) in self.allowed
@@ -171,19 +178,30 @@ class Bot:
         if self.a.get("tag"):
             text += " 🤖"
         self.sleep(min(2 + len(text) / 25, 8) * random.uniform(0.7, 1.2))  # roughly how long typing takes
+        if pending:  # a message request from someone on your list: accept it so the reply can go out
+            self.cl.direct_pending_approve(int(t.id))
         self.cl.direct_send(text, thread_ids=[int(t.id)])
         stamp = time.monotonic()
         self.sent.append(stamp)
         self.sent_per_chat[tid].append(stamp)
-        who = t.thread_title or ", ".join(f"@{u.username}" for u in (t.users or [])[:2])
-        self.log(f"replied to {who}: {text[:100]}")
+        self.log(f"replied to {self._who(t)}: {text[:100]}")
         return True
 
     def poll_once(self) -> int:
         replied = 0
-        for t in self.cl.direct_threads(amount=20, thread_message_limit=CONTEXT):
+        threads = [(t, False) for t in self.cl.direct_threads(amount=20, thread_message_limit=CONTEXT)]
+        for t in self.cl.direct_pending_inbox(20):  # message requests: people you don't follow
+            if self.allowed is not None:
+                threads.append((t, True))
+            elif str(t.id) not in self.told and any(_utc(m.timestamp) > self.since for m in t.messages or []):
+                self.told.add(str(t.id))
+                self.log(
+                    f"{self._who(t)} sent a message request. In Everyone mode requests aren't answered: "
+                    "accept it in Instagram, or add them to your list."
+                )
+        for t, pending in threads:
             try:
-                replied += self.handle(t)
+                replied += self.handle(t, pending)
             except ai.AIError as exc:
                 self.log(f"AI problem: {exc}")
             except Exception as exc:
