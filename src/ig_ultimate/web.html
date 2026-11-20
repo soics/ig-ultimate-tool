@@ -39,6 +39,7 @@ input[type=text], input[type=password], input[type=number], select, textarea { w
 input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: none; }
 textarea { min-height: 5rem; }
 label.field { display: grid; gap: .3rem; margin: .8rem 0; font-weight: 700; }
+.guide ol { padding-left: 1.4rem; } .guide li { margin: .3rem 0; overflow-wrap: anywhere; }
 label.check { display: flex; gap: .55rem; align-items: center; margin: .35rem 0; min-height: 36px; cursor: pointer; }
 input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-color: var(--pink-deep); }
 .row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-top: 1rem; }
@@ -210,7 +211,7 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
   $("agreeBtn").onclick = () => api("/api/agree", {}).then(refresh);
 
   // ---------------------------------------------------------------- sections
-  const SECTIONS = ["Followers", "Chats", "Posts", "Footprint", "Profile", "Auto-reply", "Nuke", "Settings"];
+  const SECTIONS = ["Followers", "Chats", "Posts", "Footprint", "Profile", "Auto-reply", "Username finder", "Nuke", "Settings"];
   function drawNav() {
     $("nav").replaceChildren(...SECTIONS.map((s) => {
       const b = el("button", { type: "button", textContent: s === "Nuke" ? "NUKE" : s, className: s === "Nuke" ? "nuke" : "" });
@@ -223,6 +224,7 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
     const m = $("main");
     if (section === "Nuke") return drawNuke(m);
     if (section === "Auto-reply") return drawAI(m);
+    if (section === "Username finder") return drawHunt(m);
     if (section === "Settings") return drawSettings(m);
     const list = C.tools.filter((t) => t.section === section);
     const holder = el("div");
@@ -386,12 +388,17 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
     const a = S.ai;
     const provider = el("select", {}, el("option", { value: "", textContent: "Pick an AI..." }), ...C.providers.map((p) => el("option", { value: p.key, textContent: p.label, selected: p.key === a.provider })));
     const privacy = el("p", { className: "muted" });
+    const guide = el("div", { className: "guide" });
     const key = el("input", { type: "password", placeholder: a.has_key ? "Saved. Leave empty to keep it." : "Paste your API key" });
     const claude = el("select", {}, ...C.claude_models.map((x) => el("option", { value: x.id, textContent: x.label, selected: x.id === a.model })));
+    const keyRow = el("label", { className: "field" }, "API key", key);
     const claudeRow = el("label", { className: "field" }, "Which Claude", claude);
     const url = el("input", { type: "text", placeholder: "https://your-server.example/v1" });
     const urlRow = el("label", { className: "field" }, "Server address (ends in /v1)", url);
-    const showProvider = () => { const p = C.providers.find((x) => x.key === provider.value); privacy.textContent = p ? p.privacy : ""; claudeRow.hidden = provider.value !== "anthropic"; urlRow.hidden = provider.value !== "custom"; };
+    const showProvider = () => { const p = C.providers.find((x) => x.key === provider.value); privacy.textContent = p ? p.privacy : "";
+      guide.replaceChildren(...(p ? [el("h3", { textContent: "How to set it up" }), el("ol", {}, ...p.steps.map((x) => el("li", { textContent: x }))),
+        p.link ? el("p", {}, el("a", { href: p.link, target: "_blank", rel: "noopener noreferrer", textContent: "Open " + p.link.replace(/^https?:\/\//, "") })) : null] : []));
+      keyRow.hidden = !p || !p.needs_key; claudeRow.hidden = provider.value !== "anthropic"; urlRow.hidden = provider.value !== "custom"; };
     provider.onchange = showProvider;
     const modes = Object.entries(C.modes).map(([k, label]) => { const r = el("input", { type: "radio", name: "mode", value: k, checked: k === a.mode }); return [r, el("label", { className: "check" }, r, label)]; });
     const wl = el("textarea", { value: a.whitelist.map((n) => "@" + n).join(" ") });
@@ -419,7 +426,8 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
     stop.onclick = () => api("/api/ai/stop", {}).then(refresh).then(drawMain);
     m.replaceChildren(el("h2", { textContent: "AI auto-reply" }),
       el("p", { className: "muted", textContent: "Answers new DMs the way you text: photos, memes, voice notes and reels included. Only messages that arrive after you press Start get answered." }),
-      el("label", { className: "field" }, "AI", provider), privacy, el("label", { className: "field" }, "API key", key), claudeRow, urlRow,
+      el("p", { className: "muted", textContent: "Not sure which AI? No subscription: Groq (free). Pay for Claude Pro/Max: Claude Code. Pay for ChatGPT: Codex. A business: a Claude or OpenAI API key." }),
+      el("label", { className: "field" }, "AI", provider), privacy, guide, keyRow, claudeRow, urlRow,
       el("h3", { textContent: "Who it replies to" }), ...modes.map((x) => x[1]),
       el("label", { className: "field" }, "Whitelist (usernames)", wl),
       el("h3", { textContent: "Personality" }), el("label", { className: "field" }, "Your name", name), el("label", { className: "field" }, "How you text", style), tagL, groupsL, instantL,
@@ -427,6 +435,27 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
       el("h3", { textContent: "Run it" }), el("label", { className: "field" }, "Only these usernames (for that mode)", these),
       el("div", { className: "row" }, start, stop), startMsg, el("pre", { className: "log", id: "aiLog", textContent: a.log.join("\n") || "Nothing yet." }));
     showProvider();
+  }
+
+  // ---------------------------------------------------------------- username finder
+  function drawHunt(m) {
+    const h = S.hunt;
+    const length = el("select", {}, ...[["", "Shortest first (2, 3, 4, 5, 6+)"], ["2", "Only 2 characters"], ["3", "Only 3 characters"], ["4", "Only 4 letters"], ["5", "Only 5 letters"], ["6", "Only 6 letters or more"]]
+      .map(([v, t]) => el("option", { value: v, textContent: t })));
+    const mine = el("textarea", { placeholder: "your own ideas, tried first (optional)" });
+    const user = el("input", { type: "text", placeholder: S.username });
+    const msg = el("p", { role: "status" });
+    const start = el("button", { className: "btn", type: "button", textContent: "Start hunting", disabled: h.running });
+    const stop = el("button", { className: "btn ghost", type: "button", textContent: "Stop", disabled: !h.running });
+    start.onclick = async () => { try { await api("/api/hunt/start", { length: length.value, mine: mine.value, username: user.value }); await refresh(); drawMain(); } catch (e) { say(msg, e.message, "err"); } };
+    stop.onclick = () => api("/api/hunt/stop", {}).then(refresh).then(drawMain);
+    m.replaceChildren(el("h2", { textContent: "Username finder" }),
+      ...C.hunt_help.split("\n").map((t, i) => el("p", { className: i === 3 ? "warn" : "muted", textContent: t })),
+      el("label", { className: "field" }, "Which names", length),
+      el("label", { className: "field" }, "Your own ideas (optional)", mine),
+      el("label", { className: "field" }, `Type your username (${S.username}) to confirm it may be renamed`, user),
+      el("div", { className: "row" }, start, stop), msg,
+      el("pre", { className: "log", id: "huntLog", textContent: h.log.join("\n") || "Nothing yet." }));
   }
 
   // ---------------------------------------------------------------- settings
@@ -448,7 +477,7 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
 
   // ---------------------------------------------------------------- live state
   $("stopBtn").onclick = () => api("/api/stop", {});
-  let shown = "", dismissed = "";
+  let shown = "", dismissed = "", huntWas = false;
   $("closeBtn").onclick = () => { dismissed = S.job ? S.job.id : ""; $("job").hidden = true; };
   async function refresh() {
     try { S = await api("/api/state"); } catch { return; }
@@ -476,6 +505,8 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
       $("stopBtn").hidden = !j.running;
     }
     const log = $("aiLog"); if (log) log.textContent = S.ai.log.join("\n") || "Nothing yet.";
+    const hlog = $("huntLog"); if (hlog) hlog.textContent = S.hunt.log.join("\n") || "Nothing yet.";
+    if (logged && S.hunt.running !== huntWas) { huntWas = S.hunt.running; if (section === "Username finder") drawMain(); }  // it ended by itself: fix the buttons
   }
   (async () => {
     C = await api("/api/catalog");

@@ -11,6 +11,7 @@ A turn is {"role": "user"|"assistant", "text": str, "images": [jpeg bytes]}.
 from __future__ import annotations
 
 import base64
+import re
 import shutil
 import subprocess
 import tempfile
@@ -28,14 +29,26 @@ MEDIA_HOSTS = ("cdninstagram.com", "fbcdn.net")
 PRESETS: dict[str, dict] = {
     "groq": {
         "label": "Groq: free key, very fast, understands photos and voice notes (recommended)",
+        "steps": [
+            "Groq (with a Q) is a free AI service. It is not Elon Musk's Grok.",
+            "Open console.groq.com/keys and sign in with Google, GitHub or email. No card needed.",
+            "Click Create API Key, type any name (like instagram), then copy the key. It is shown only once.",
+            "Paste it in the API key box and press Save and test.",
+        ],
         "base_url": "https://api.groq.com/openai/v1",
         "key_url": "https://console.groq.com/keys",
-        "prefer": ["llama-4-scout", "llama-4-maverick", "llama-3.3-70b"],
+        # Groq retired its Llama models in 2026; Qwen 3.8 reads photos too. gpt-oss is text-only.
+        "prefer": ["qwen3.8", "qwen", "llama-4-scout", "llama-4-maverick", "gpt-oss-120b", "llama-3.3-70b"],
         "stt_prefer": ["whisper-large-v3-turbo", "whisper-large-v3"],
         "privacy": "Messages are sent to Groq to write the reply.",
     },
     "gemini": {
         "label": "Google Gemini: free key, photos too",
+        "steps": [
+            "Open aistudio.google.com/apikey and sign in with a Google account.",
+            "Click Create API key. If it asks for a project, let it make one. Copy the key.",
+            "Paste it in the API key box and press Save and test. Read the privacy warning first.",
+        ],
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
         "key_url": "https://aistudio.google.com/apikey",
         "prefer": ["flash-lite", "flash"],
@@ -46,6 +59,12 @@ PRESETS: dict[str, dict] = {
     },
     "openrouter": {
         "label": "OpenRouter: free models available (low daily limit)",
+        "steps": [
+            "Open openrouter.ai and sign up.",
+            "Go to openrouter.ai/keys, click Create Key and copy it.",
+            "Paste it in the API key box and press Save and test.",
+            "Free models have a small daily limit. Adding a few dollars of credit raises it.",
+        ],
         "base_url": "https://openrouter.ai/api/v1",
         "key_url": "https://openrouter.ai/keys",
         "prefer": [":free"],
@@ -53,6 +72,11 @@ PRESETS: dict[str, dict] = {
     },
     "ollama": {
         "label": "Ollama on this computer: private, free, needs a decent PC",
+        "steps": [
+            "Install Ollama from ollama.com/download and open it. It needs about 8 GB of RAM.",
+            "In a terminal, run: ollama pull gemma3 (a 3 GB model that also understands photos).",
+            "Leave Ollama running, then press Save and test here. No key needed.",
+        ],
         "base_url": "http://localhost:11434/v1",
         "key_url": "https://ollama.com/download",
         "prefer": ["gemma3", "llama3.2-vision", "llava", "llama3"],
@@ -61,6 +85,12 @@ PRESETS: dict[str, dict] = {
     },
     "openai": {
         "label": "OpenAI API key (paid)",
+        "steps": [
+            "A ChatGPT Plus or Pro subscription does NOT include an API key. Have one? Pick Codex instead.",
+            "Open platform.openai.com, sign in and add credit under Settings > Billing (pay as you go).",
+            "Go to platform.openai.com/api-keys, click Create new secret key and copy it.",
+            "Paste it in the API key box and press Save and test.",
+        ],
         "base_url": "https://api.openai.com/v1",
         "key_url": "https://platform.openai.com/api-keys",
         "prefer": ["gpt-4.1-mini", "gpt-4o-mini", "mini"],
@@ -69,6 +99,12 @@ PRESETS: dict[str, dict] = {
     },
     "anthropic": {
         "label": "Claude API key (paid, by Anthropic)",
+        "steps": [
+            "A Claude Pro or Max plan does NOT include an API key. Have one? Pick Claude Code instead.",
+            "Open console.anthropic.com, sign in and buy credit under Billing (pay as you go).",
+            "Go to Settings > API keys, click Create Key and copy it.",
+            "Paste it in the API key box, choose which Claude, and press Save and test.",
+        ],
         "kind": "anthropic",
         "key_url": "https://console.anthropic.com/settings/keys",
         "models": [
@@ -80,11 +116,26 @@ PRESETS: dict[str, dict] = {
     },
     "claude_code": {
         "label": "Claude Code (uses your Claude subscription, slower)",
+        "steps": [
+            "For people who pay for Claude Pro or Max. No API key: replies use your plan's usage limits.",
+            "Install Claude Code. Mac or Linux terminal: curl -fsSL https://claude.ai/install.sh | bash",
+            "Or in Windows PowerShell: irm https://claude.ai/install.ps1 | iex",
+            "Open a new terminal, run claude, sign in with your Claude account, then type /exit.",
+            "Close and reopen IG Ultimate Tool, pick Claude Code and press Save and test.",
+        ],
+        "key_url": "https://code.claude.com/docs/en/setup",  # install guide (no key for this one)
         "kind": "cli",
         "privacy": "Messages are sent to Anthropic through Claude Code.",
     },
     "codex": {
         "label": "Codex (uses your ChatGPT subscription, slower, can read ALL your files)",
+        "steps": [
+            "For people who pay for ChatGPT Plus, Pro or Business. No API key needed.",
+            "Install Node.js from nodejs.org. Then in a terminal run: npm install -g @openai/codex",
+            "Run codex, choose Sign in with ChatGPT, then exit it.",
+            "Close and reopen IG Ultimate Tool, pick Codex and press Save and test. Read the warning first.",
+        ],
+        "key_url": "https://developers.openai.com/codex/cli",  # install guide (no key for this one)
         "kind": "cli",
         "privacy": (
             "Messages are sent to OpenAI through Codex. WARNING: Codex can read every file your user "
@@ -94,6 +145,11 @@ PRESETS: dict[str, dict] = {
     },
     "custom": {
         "label": "Any other OpenAI-compatible server (advanced)",
+        "steps": [
+            "For businesses or advanced users with their own AI server (LM Studio, vLLM, LiteLLM, ...).",
+            "Enter the address ending in /v1. Use https://, or http://localhost for one on this computer.",
+            "Paste the server's key if it needs one, then press Save and test.",
+        ],
         "base_url": "",
         "prefer": [],
         "privacy": "Messages are sent to the server you enter.",
@@ -154,12 +210,36 @@ def list_models(s: dict) -> list[str]:
     return sorted(m["id"] for m in _check(resp).get("data", []))
 
 
+NOT_CHAT = ("whisper", "guard", "orpheus", "tts", "embed", "moderation", "transcribe")
+
+
 def pick(models: list[str], prefer: list[str]) -> str:
     for want in prefer:
         for model in models:
             if want in model:
                 return model
-    return models[0] if models else ""
+    chat = [m for m in models if not any(w in m for w in NOT_CHAT)]  # never a speech or filter model
+    return (chat or models or [""])[0]
+
+
+def refresh_model(s: dict, log=lambda _s: None) -> None:
+    """At Start: providers retire models, so an automatically picked one is re-picked from the live list."""
+    p = PRESETS.get(s.get("provider", ""), {})
+    if p.get("kind") or not s.get("base_url"):
+        return  # Claude / CLI providers name their own models
+    try:
+        models = list_models(s)
+    except (AIError, requests.RequestException):
+        return  # offline: the reply itself will say what's wrong
+    if not models:
+        return
+    if s.get("model_auto", True) or s.get("model") not in models:
+        best = pick(models, p.get("prefer", []))
+        if best and best != s.get("model"):
+            log(f"Switched the AI model from {s.get('model') or 'none'} to {best} (best one available now).")
+            s["model"] = best
+    if p.get("stt_prefer") and s.get("stt_model") not in models:
+        s["stt_model"] = pick([m for m in models if any(w in m for w in p["stt_prefer"])], p["stt_prefer"])
 
 
 def _openai(s: dict, system: str, turns: list[dict]) -> str:
@@ -179,7 +259,8 @@ def _openai(s: dict, system: str, turns: list[dict]) -> str:
     body = {"model": s["model"], "messages": messages, "max_tokens": 300}
     url = f"{s['base_url'].rstrip('/')}/chat/completions"
     data = _check(requests.post(url, json=body, headers=_headers(s), timeout=TIMEOUT))
-    return (data["choices"][0]["message"].get("content") or "").strip()
+    text = data["choices"][0]["message"].get("content") or ""
+    return re.sub(r"<think>.*?(</think>|$)", "", text, flags=re.S).strip()  # reasoning models' notes
 
 
 def transcribe(s: dict, audio: bytes) -> str | None:

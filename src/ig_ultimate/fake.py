@@ -50,6 +50,8 @@ class FakeClient:
         self.challenge_code_handler = None
         self.calls: list[tuple] = []  # every change, for tests
         self._settings: dict = {}
+        self.free_names = {"quill"}  # the username finder's pretend hits
+        self.held_names = {"ok", "zen"}  # "no account" but Instagram still holds them
         users = [_user(i) for i in range(len(NAMES))]
         self._following = {u.pk: u for u in users[:30]}  # you follow 0-29
         self._followers = {u.pk: u for u in users[10:]}  # 10-39 follow you: 0-9 don't follow back
@@ -57,6 +59,7 @@ class FakeClient:
             NS(pk="3001", username="new.fan1", full_name=""),
             NS(pk="3002", username="new.fan2", full_name=""),
         ]
+        self._pending: list = []  # message requests (chats from people you don't follow)
         months = [0, 1, 2, 4, 5, 7, 9, 13, 20, 30]
         self._threads = [
             NS(
@@ -225,6 +228,14 @@ class FakeClient:
                 return u.pk
         raise ig_errors.UserNotFound(username)
 
+    def direct_pending_inbox(self, amount: int = 20):
+        return list(self._pending[:amount])
+
+    def direct_pending_approve(self, thread_id: int) -> bool:
+        self._threads += [t for t in self._pending if t.id == str(thread_id)]
+        self._pending = [t for t in self._pending if t.id != str(thread_id)]
+        return self._did("direct_pending_approve", thread_id)
+
     def direct_thread_hide(self, thread_id: int, move_to_spam: bool = False) -> bool:
         self._threads = [t for t in self._threads if t.id != str(thread_id)]
         return self._did("direct_thread_hide", thread_id)
@@ -303,7 +314,16 @@ class FakeClient:
         self._account.biography = biography
         return self._did("account_set_biography", biography)
 
+    def user_info_by_username_v1(self, username: str):
+        if username in self.free_names or username in self.held_names:
+            raise ig_errors.UserNotFound(username)
+        return NS(pk="9", username=username)  # pretend everything else is taken
+
     def account_edit(self, **data):
+        if "username" in data:
+            if data["username"] in self.held_names:
+                raise ig_errors.ClientError("This username isn't available. Please try another.")
+            self._account.username = data["username"]
         if "external_url" in data:
             self._account.external_url = data["external_url"]
         self._did("account_edit", tuple(sorted(data)))

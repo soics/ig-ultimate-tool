@@ -64,6 +64,31 @@ def test_model_picker_prefers_the_best_available():
     models = ["gemma2-9b", "meta-llama/llama-4-scout-17b-16e-instruct", "whisper-large-v3"]
     assert ai.pick(models, ai.PRESETS["groq"]["prefer"]) == "meta-llama/llama-4-scout-17b-16e-instruct"
     assert ai.pick(["x", "y"], ["nothing"]) == "x"
+    # Groq's list after it retired Llama (2026-11): the old picker fell back to the first name
+    groq_now = ["allam-2-7b", "openai/gpt-oss-120b", "qwen/qwen3.8-27b", "whisper-large-v3"]
+    assert ai.pick(groq_now, ai.PRESETS["groq"]["prefer"]) == "qwen/qwen3.8-27b"
+    assert ai.pick(["whisper-large-v3", "llama-prompt-guard", "chatty"], []) == "chatty"
+
+
+def test_retired_or_auto_picked_model_is_re_picked_at_start(monkeypatch):
+    monkeypatch.setattr(ai, "list_models", lambda s: ["allam-2-7b", "qwen/qwen3.8-27b", "whisper-large-v3"])
+    said = []
+    s = {"provider": "groq", "base_url": "https://x/v1", "model": "allam-2-7b", "stt_model": "gone"}
+    ai.refresh_model(s, said.append)
+    assert s["model"] == "qwen/qwen3.8-27b" and s["stt_model"] == "whisper-large-v3" and said
+    chosen = {"provider": "groq", "base_url": "https://x/v1", "model": "allam-2-7b", "model_auto": False}
+    ai.refresh_model(chosen)
+    assert chosen["model"] == "allam-2-7b"  # a model you typed yourself is kept while it exists
+    chosen["model"] = "llama-3.3-70b-versatile"
+    ai.refresh_model(chosen)
+    assert chosen["model"] == "qwen/qwen3.8-27b"  # ...but not once it's retired
+
+
+def test_reasoning_notes_never_reach_the_dm(monkeypatch):
+    s = {"provider": "groq", "base_url": "https://x/v1", "key": "k", "model": "m"}
+    out = {"choices": [{"message": {"content": "<think>they want x</think>\n\nlol bet"}}]}
+    monkeypatch.setattr(ai.requests, "post", lambda *a, **k: FakeResponse(200, out))
+    assert ai.reply(s, "x", [{"role": "user", "text": "hi", "images": []}]) == "lol bet"
 
 
 def test_claude_uses_official_sdk_with_fallbacks(monkeypatch):

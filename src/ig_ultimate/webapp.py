@@ -22,7 +22,7 @@ from importlib import resources
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
 
-from . import ai, chat, config, engine, paths, session, tools
+from . import ai, chat, config, engine, paths, session, snipe, tools
 from .cli import NOTICE
 from .engine import Plan, Stopped
 
@@ -250,6 +250,8 @@ class WebApp:
         self.last_seen = time.monotonic()  # the page checks in every second; see the nuke countdown
         self.ai_stop: threading.Event | None = None
         self.ai_log: deque[str] = deque(maxlen=200)
+        self.hunt_stop: threading.Event | None = None
+        self.hunt_log: deque[str] = deque(maxlen=200)
         if preview:
             self.use_preview()
 
@@ -259,6 +261,8 @@ class WebApp:
             return "A job is running. Wait for it or press Stop."
         if self.ai_stop and not self.ai_stop.is_set():
             return "Auto-reply is running. Stop it first, so only one thing uses your account at a time."
+        if self.hunt_stop and not self.hunt_stop.is_set():
+            return "The username finder is running. Stop it first, so only one thing uses your account."
         return ""
 
     def state(self) -> dict:
@@ -287,6 +291,10 @@ class WebApp:
                 "these": a["these"],
                 "log": list(self.ai_log)[-60:],
             },
+            "hunt": {
+                "running": bool(self.hunt_stop and not self.hunt_stop.is_set()),
+                "log": list(self.hunt_log)[-60:],
+            },
         }
 
     def catalog(self) -> dict:
@@ -297,11 +305,20 @@ class WebApp:
             ],
             "nuke": [{"key": k, "label": label} for k, label, _b in tools.NUKE_STEPS],
             "providers": [
-                {"key": k, "label": p["label"], "privacy": p["privacy"]} for k, p in ai.PRESETS.items()
+                {
+                    "key": k,
+                    "label": p["label"],
+                    "privacy": p["privacy"],
+                    "steps": p["steps"],
+                    "link": p.get("key_url", ""),
+                    "needs_key": p.get("kind") != "cli" and not p.get("no_key"),
+                }
+                for k, p in ai.PRESETS.items()
             ],
             "claude_models": [{"id": m, "label": label} for m, label in ai.PRESETS["anthropic"]["models"]],
             "modes": chat.MODES,
             "notice": NOTICE,
+            "hunt_help": snipe.EXPLAIN,
         }
 
     def save(self):
@@ -365,6 +382,7 @@ class WebApp:
     def logout(self):
         self.cancel.set()  # logging out stops whatever is still using the account
         self.ai_stop_now()
+        self.hunt_stop_now()
         if self.preview:
             return self._leave_preview()
         session.logout(self.cl)
@@ -533,6 +551,7 @@ class WebApp:
             "base_url": url,
             "key": body.get("key") or (a.get("key", "") if same else ""),
             "model": body.get("model") or "",
+            "model_auto": not body.get("model"),
             "stt_model": "",
         }
         if p.get("kind") is None:
@@ -580,6 +599,9 @@ class WebApp:
         stop = threading.Event()
         self.ai_stop = stop
         self.ai_log.append("Auto-reply started. Only new messages get answered.")
+        ai.refresh_model(a, self.ai_log.append)
+        self.cfg["ai"] = a
+        self.save()
         bot = chat.Bot(self.cl, a, allowed, log=self.ai_log.append)
         threading.Thread(target=bot.run, args=(stop,), daemon=True).start()
 
@@ -587,6 +609,35 @@ class WebApp:
         if self.ai_stop:
             self.ai_stop.set()
             self.ai_log.append("Auto-reply stopped.")
+
+    # ------------------------------------------------------------ username finder
+    def hunt_start(self, body: dict):
+        with self.start_lock:
+            if why := self.busy():
+                raise ValueError(why)
+            if str(body.get("username", "")).strip().lstrip("@") != self.username:
+                raise ValueError("Type your username to confirm your account may be renamed.")
+            raw = str(body.get("length", "")).strip()
+            length = int(raw) if raw in {"2", "3", "4", "5", "6"} else None
+            stop = threading.Event()
+            self.hunt_stop = stop
+            self.hunt_log.append("Username finder started.")
+            finder = snipe.Finder(
+                self.cl, self.hunt_log.append, stop, self.username, length, _names(body.get("mine"))
+            )
+
+            def work():
+                if won := finder.run():
+                    self.username = won
+                    self.cfg["username"] = won
+                    self.save()
+                stop.set()
+
+            threading.Thread(target=work, daemon=True).start()
+
+    def hunt_stop_now(self):
+        if self.hunt_stop and not self.hunt_stop.is_set():
+            self.hunt_stop.set()
 
     # ------------------------------------------------------------ routing
     def post(self, path: str, body: dict):
@@ -619,6 +670,8 @@ class WebApp:
             "/api/ai/settings": lambda: self.ai_settings(body),
             "/api/ai/start": lambda: self.ai_start(body),
             "/api/ai/stop": lambda: self.ai_stop_now(),
+            "/api/hunt/start": lambda: self.hunt_start(body),
+            "/api/hunt/stop": lambda: self.hunt_stop_now(),
         }
         if path not in routes:
             raise KeyError(path)

@@ -390,6 +390,45 @@ class App:
                 return
         console.print(Panel("Done. Your account is wiped.", border_style="green"))
 
+    # ------------------------------------------------------------ username finder
+    def finder(self) -> None:
+        import threading
+
+        from . import snipe
+
+        console.print(Panel(snipe.EXPLAIN, title="Username finder", border_style="#FF3D7F"))
+        raw = ask("Only one length? Type 2-6 (6 = 6 or longer), or press Enter for shortest first:")
+        length = int(raw) if raw in {"2", "3", "4", "5", "6"} else None
+        mine = ask("Your own ideas to try first (optional, separated by spaces):").replace(",", " ").split()
+        username = self.cl.account_info().username
+        if (
+            ask(f"Type your username ([white]{username}[/]) to confirm it may be renamed:").lstrip("@")
+            != username
+        ):
+            console.print("That doesn't match. Nothing changed.")
+            return
+        stop = threading.Event()
+        finder = snipe.Finder(
+            self.cl,
+            lambda s: console.print(f"  [dim]{time.strftime('%H:%M')}[/] {s}"),
+            stop,
+            username,
+            length,
+            mine,
+        )
+        worker = threading.Thread(target=finder.run, daemon=True)
+        worker.start()
+        console.print("[green]Hunting. Leave this window open. Press Ctrl+C to stop.[/]")
+        try:
+            while worker.is_alive():
+                worker.join(0.5)
+        except KeyboardInterrupt:
+            stop.set()
+            worker.join(5)
+        if finder.won:
+            self.cfg["username"] = finder.won
+            self.save()
+
     # ------------------------------------------------------------ main loop
     def ai_menu(self):
         from . import chat
@@ -404,8 +443,9 @@ class App:
             "4": ("Likes, saves, comments & tags", self.footprint_menu),
             "5": ("Profile clean-up", self.profile_menu),
             "6": ("AI auto-reply", self.ai_menu),
-            "7": ("[red]NUKE: wipe everything[/]", self.nuke),
-            "8": ("Settings (speed, keep-list, log out)", self.settings_menu),
+            "7": ("Username finder: hunt for a short or rare username", self.finder),
+            "8": ("[red]NUKE: wipe everything[/]", self.nuke),
+            "9": ("Settings (speed, keep-list, log out)", self.settings_menu),
         }
         while True:
             try:

@@ -1,3 +1,5 @@
+import threading
+import time
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace as NS
 
@@ -47,6 +49,56 @@ def test_messages_from_before_start_are_never_answered(replies):
     cl = FakeClient()
     cl._threads[0].messages = [msg(2000, -30), msg(2000, -5)]
     assert bot(cl).poll_once() == 0 and not sends(cl)
+
+
+@pytest.mark.skipif(
+    not hasattr(time, "tzset"), reason="switching time zones needs time.tzset (not on Windows)"
+)
+def test_dm_times_from_instagrapi_are_local_time_not_utc(replies, monkeypatch):
+    # instagrapi returns naive local times. West of UTC a brand-new DM looked hours old, so nothing
+    # was ever answered; east of UTC old DMs looked new.
+    for tz in ("America/Lower_Princes", "Asia/Tokyo"):
+        monkeypatch.setenv("TZ", tz)
+        time.tzset()
+        local = lambda minutes: (START + timedelta(minutes=minutes)).astimezone().replace(tzinfo=None)  # noqa: E731
+        cl = FakeClient()
+        cl._threads[0].messages = [msg(2000, -30), msg(2000, 1, "u up?")]
+        cl._threads[0].messages[0].timestamp = local(-30)
+        cl._threads[0].messages[1].timestamp = local(1)
+        assert bot(cl).poll_once() == 1, tz
+        assert replies[-1][-1]["text"] == "u up?"
+        old = FakeClient()
+        old._threads[0].messages = [msg(2000, -30)]
+        old._threads[0].messages[0].timestamp = local(-30)
+        assert bot(old).poll_once() == 0, tz
+    monkeypatch.delenv("TZ")
+    time.tzset()
+
+
+def test_message_request_from_someone_on_your_list_is_accepted_and_answered(replies):
+    cl = FakeClient()
+    request = cl._threads.pop(0)
+    request.messages = [msg(2000, 1, "hi it's me")]
+    cl._pending = [request]
+    assert bot(cl, mode_allowed={"2000"}).poll_once() == 1
+    assert ("direct_pending_approve", 5000) in cl.calls and sends(cl)
+
+
+def test_everyone_mode_explains_message_requests_once_instead_of_answering(replies):
+    cl, said = FakeClient(), []
+    request = cl._threads.pop(0)
+    request.messages = [msg(2000, 1, "hi")]
+    cl._pending = [request]
+    b = chat.Bot(
+        cl,
+        {**chat.DEFAULT_AI, "provider": "groq"},
+        None,
+        log=said.append,
+        sleep=lambda s: None,
+        now=lambda: START,
+    )
+    assert b.poll_once() == 0 and b.poll_once() == 0
+    assert not sends(cl) and len([s for s in said if "message request" in s]) == 1
 
 
 def test_new_message_gets_exactly_one_reply_once(replies):
@@ -163,3 +215,53 @@ def test_file_reading_ais_are_never_allowed_for_everyone():
     assert ai.needs_trusted_people({"provider": "claude_code", "agent_folder": "bot-files"})
     assert not ai.needs_trusted_people({"provider": "claude_code"})
     assert not ai.needs_trusted_people({"provider": "groq"})
+
+
+def test_instant_mode_subscribes_to_dms_and_wakes_the_loop(replies):
+    # realtime_connect alone opens the socket; Instagram pushes nothing until direct_subscribe
+    events = {}
+
+    class RT:
+        subscribed = False
+
+        def direct_subscribe(self):
+            RT.subscribed = True
+
+        def on(self, name, fn):
+            events[name] = fn
+
+        def read_once(self):
+            time.sleep(0.01)
+
+    cl = FakeClient()
+    cl.realtime_connect = RT
+    cl.realtime_disconnect = lambda: None
+    logs = []
+    b = chat.Bot(cl, {**chat.DEFAULT_AI, "provider": "groq"}, None, log=logs.append, sleep=lambda s: None)
+    stop = threading.Event()
+    t = threading.Thread(target=b.run, args=(stop,), daemon=True)
+    t.start()
+    for _ in range(200):
+        if "direct" in events:
+            break
+        time.sleep(0.01)
+    stop.set()
+    t.join(2)
+    assert RT.subscribed and "direct" in events and any("Instant mode on" in s for s in logs)
+
+
+def test_says_why_a_message_sent_just_before_start_is_skipped(replies):
+    cl = FakeClient()
+    cl._threads[0].messages = [msg(2000, -2)]
+    logs = []
+    b = chat.Bot(
+        cl,
+        {**chat.DEFAULT_AI, "provider": "groq"},
+        None,
+        log=logs.append,
+        sleep=lambda s: None,
+        now=lambda: START,
+    )
+    assert b.poll_once() == 0 and any("before you pressed Start" in s for s in logs)
+    b.poll_once()
+    assert sum("before you pressed Start" in s for s in logs) == 1  # said once, not every check
