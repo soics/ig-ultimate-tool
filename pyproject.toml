@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ig-ultimate-tool"
-version = "1.4.0"
+version = "1.5.0"
 description = "Free, open-source Instagram toolkit: clean up followers, chats, posts, likes and more, plus an AI auto-reply. Runs on your own computer."
 readme = "README.md"
 requires-python = ">=3.11"
-license = "MIT"
+license = "MIT AND CC-BY-SA-4.0"  # CC BY-SA 4.0: only src/ig_ultimate/data/words.txt
 authors = [{ name = "soics" }]
 keywords = ["instagram", "unfollow", "cleanup", "automation", "chatbot"]
 classifiers = [
