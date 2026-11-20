@@ -54,7 +54,7 @@ header .brand { font: 800 1.1rem/1 var(--display); letter-spacing: -.02em; }
 
 /* login */
 #login { max-width: 30rem; margin: 6vh auto; padding: 0 1rem; perspective: 1200px; }
-#loginCard { transition: transform .4s ease-out; transform-style: preserve-3d; }
+#loginCard { transition: transform .4s ease-out; }  /* tilts as one flat surface; preserve-3d here breaks button hit-testing */
 #login h1 { font-size: 2rem; }
 #login .strike { position: relative; color: var(--warm); white-space: nowrap; }
 #login .strike::after { content: ""; position: absolute; left: -2%; right: -2%; top: 54%; height: .12em; background: var(--pink); border-radius: 3px; }

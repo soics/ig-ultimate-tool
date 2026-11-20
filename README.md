@@ -1,3 +1,5 @@
+![IG Ultimate Tool: your Instagram, cleaned up. Not by hand.](docs/banner.svg)
+
 # IG Ultimate Tool
 
 **Clean up your Instagram in minutes instead of days.** Free, open source, and it runs only on your own computer.
