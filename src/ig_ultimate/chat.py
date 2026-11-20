@@ -14,7 +14,7 @@ import threading
 import time
 from collections import deque
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from . import ai
 from .engine import explain
@@ -143,6 +143,13 @@ class Bot:
         tid = str(t.id)
         msgs = sorted(t.messages or [], key=lambda m: _utc(m.timestamp))
         cursor = self.cursor.get(tid, self.since)
+        if tid not in self.cursor and msgs and not self._mine(msgs[-1]):
+            last = _utc(msgs[-1].timestamp)
+            if self.since - timedelta(minutes=15) < last <= self.since:
+                self.log(
+                    f"{self._who(t)}: their last message came before you pressed Start, so it's skipped. "
+                    "New messages get answered."
+                )
         if msgs:
             self.cursor[tid] = max(cursor, _utc(msgs[-1].timestamp))
         new = [m for m in msgs if _utc(m.timestamp) > cursor and not self._mine(m)]
@@ -213,8 +220,14 @@ class Bot:
     def run(self, stop: threading.Event, interval: float = 10.0) -> None:
         wake = threading.Event()
         live = {"on": False}
+        self.log(
+            f"Using {self.a.get('model') or self.a.get('provider')}. Watching your inbox for new messages."
+        )
         if self.a.get("instant", True):
-            threading.Thread(target=self._listen, args=(stop, wake, live), daemon=True).start()
+            rt = self._connect_live()  # here, not in the listener: it uses the client the loop also uses
+            if rt is not None:
+                live["on"] = True
+                threading.Thread(target=self._listen, args=(rt, stop, wake, live), daemon=True).start()
         while not stop.is_set():
             try:
                 self.poll_once()
@@ -225,25 +238,36 @@ class Bot:
                     stop.set()
                     return
                 self.log(f"Couldn't check messages: {str(exc)[:120]}")
-            wake.wait(45.0 if live["on"] else interval)
+            # live pushes wake us at once; the slower check is a safety net in case one is missed
+            wake.wait(30.0 if live["on"] else interval)
             wake.clear()
 
-    def _listen(self, stop: threading.Event, wake: threading.Event, live: dict) -> None:
-        """Instant mode: Instagram's live connection wakes the reply loop as soon as a DM arrives."""
+    def _connect_live(self):
         try:
             rt = self.cl.realtime_connect()
-            rt.on("direct", lambda _event: wake.set())
-            rt.on("message", lambda _event: wake.set())
-            live["on"] = True
+            rt.direct_subscribe()  # without this Instagram never pushes DM events on the connection
             self.log("Instant mode on: replies as soon as a message arrives.")
+            return rt
+        except Exception as exc:  # noqa: BLE001 - fall back to checking every few seconds
+            self.log(f"Instant mode unavailable ({str(exc)[:80]}), checking every 10 seconds instead.")
+            return None
+
+    def _listen(self, rt, stop: threading.Event, wake: threading.Event, live: dict) -> None:
+        """Instant mode: Instagram's live connection wakes the reply loop as soon as a DM arrives."""
+        rt.on("direct", lambda _event: wake.set())
+        rt.on("message", lambda _event: wake.set())
+        try:
             while not stop.is_set():
                 try:
                     rt.read_once()
                 except TimeoutError:
                     continue
-        except Exception as exc:  # noqa: BLE001 - fall back to checking every few seconds
+        except Exception as exc:  # noqa: BLE001 - the connection dropped: fall back to checking often
             live["on"] = False
-            self.log(f"Instant mode unavailable ({str(exc)[:80]}), checking every few seconds instead.")
+            self.log(f"Instant mode dropped ({str(exc)[:80]}), checking every 10 seconds instead.")
+        finally:
+            with contextlib.suppress(Exception):
+                self.cl.realtime_disconnect()
 
 
 # ---------------------------------------------------------------- menus (terminal)
@@ -332,6 +356,8 @@ def start(app, a: dict) -> None:
         allowed = set(found)
         console.print("Replying only to: " + ", ".join(f"@{n}" for n in found.values()))
     console.print(f"[dim]{ai.PRESETS[a['provider']]['privacy']}[/]")
+    ai.refresh_model(a, console.print)
+    app.save()
     console.print("[green]Auto-reply is running. Only new messages get answered. Press Ctrl+C to stop.[/]")
     stop = threading.Event()
     bot = Bot(app.cl, a, allowed, log=lambda s: console.print(f"  [dim]{time.strftime('%H:%M')}[/] {s}"))
@@ -411,9 +437,8 @@ def setup_ai(app, a: dict) -> None:
             except (ai.AIError, Exception) as exc:  # noqa: BLE001
                 console.print(f"[red]{exc}[/]")
                 raise Back from None
-        s["model"] = ask(f"Model [{ai.pick(models, p.get('prefer', []))}] (Enter to accept):") or ai.pick(
-            models, p.get("prefer", [])
-        )
+        typed = ask(f"Model [{ai.pick(models, p.get('prefer', []))}] (Enter to accept):")
+        s["model"], s["model_auto"] = typed or ai.pick(models, p.get("prefer", [])), not typed
         if p.get("stt_prefer"):
             s["stt_model"] = ai.pick(
                 [m for m in models if any(w in m for w in p["stt_prefer"])], p["stt_prefer"]

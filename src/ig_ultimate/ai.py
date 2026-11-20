@@ -11,6 +11,7 @@ A turn is {"role": "user"|"assistant", "text": str, "images": [jpeg bytes]}.
 from __future__ import annotations
 
 import base64
+import re
 import shutil
 import subprocess
 import tempfile
@@ -36,7 +37,8 @@ PRESETS: dict[str, dict] = {
         ],
         "base_url": "https://api.groq.com/openai/v1",
         "key_url": "https://console.groq.com/keys",
-        "prefer": ["llama-4-scout", "llama-4-maverick", "llama-3.3-70b"],
+        # Groq retired its Llama models in 2026; Qwen 3.8 reads photos too. gpt-oss is text-only.
+        "prefer": ["qwen3.8", "qwen", "llama-4-scout", "llama-4-maverick", "gpt-oss-120b", "llama-3.3-70b"],
         "stt_prefer": ["whisper-large-v3-turbo", "whisper-large-v3"],
         "privacy": "Messages are sent to Groq to write the reply.",
     },
@@ -208,12 +210,38 @@ def list_models(s: dict) -> list[str]:
     return sorted(m["id"] for m in _check(resp).get("data", []))
 
 
+NOT_CHAT = ("whisper", "guard", "orpheus", "tts", "embed", "moderation", "transcribe")
+
+
 def pick(models: list[str], prefer: list[str]) -> str:
     for want in prefer:
         for model in models:
             if want in model:
                 return model
-    return models[0] if models else ""
+    chat = [m for m in models if not any(w in m for w in NOT_CHAT)]  # never a speech or filter model
+    return (chat or models or [""])[0]
+
+
+def refresh_model(s: dict, log=lambda _s: None) -> None:
+    """At Start: providers retire models, so an automatically picked one is re-picked from the live list."""
+    p = PRESETS.get(s.get("provider", ""), {})
+    if p.get("kind") or not s.get("base_url"):
+        return  # Claude / CLI providers name their own models
+    try:
+        models = list_models(s)
+    except (AIError, requests.RequestException):
+        return  # offline: the reply itself will say what's wrong
+    if not models:
+        return
+    if s.get("model_auto", True) or s.get("model") not in models:
+        best = pick(models, p.get("prefer", []))
+        if best and best != s.get("model"):
+            log(
+                f"Switched the AI model from {s.get('model') or 'none'} to {best} (best one available now)."
+            )
+            s["model"] = best
+    if p.get("stt_prefer") and s.get("stt_model") not in models:
+        s["stt_model"] = pick([m for m in models if any(w in m for w in p["stt_prefer"])], p["stt_prefer"])
 
 
 def _openai(s: dict, system: str, turns: list[dict]) -> str:
@@ -233,7 +261,8 @@ def _openai(s: dict, system: str, turns: list[dict]) -> str:
     body = {"model": s["model"], "messages": messages, "max_tokens": 300}
     url = f"{s['base_url'].rstrip('/')}/chat/completions"
     data = _check(requests.post(url, json=body, headers=_headers(s), timeout=TIMEOUT))
-    return (data["choices"][0]["message"].get("content") or "").strip()
+    text = data["choices"][0]["message"].get("content") or ""
+    return re.sub(r"<think>.*?(</think>|$)", "", text, flags=re.S).strip()  # reasoning models' notes
 
 
 def transcribe(s: dict, audio: bytes) -> str | None:

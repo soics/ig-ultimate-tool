@@ -1,3 +1,4 @@
+import threading
 import time
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace as NS
@@ -214,3 +215,53 @@ def test_file_reading_ais_are_never_allowed_for_everyone():
     assert ai.needs_trusted_people({"provider": "claude_code", "agent_folder": "bot-files"})
     assert not ai.needs_trusted_people({"provider": "claude_code"})
     assert not ai.needs_trusted_people({"provider": "groq"})
+
+
+def test_instant_mode_subscribes_to_dms_and_wakes_the_loop(replies):
+    # realtime_connect alone opens the socket; Instagram pushes nothing until direct_subscribe
+    events = {}
+
+    class RT:
+        subscribed = False
+
+        def direct_subscribe(self):
+            RT.subscribed = True
+
+        def on(self, name, fn):
+            events[name] = fn
+
+        def read_once(self):
+            time.sleep(0.01)
+
+    cl = FakeClient()
+    cl.realtime_connect = RT
+    cl.realtime_disconnect = lambda: None
+    logs = []
+    b = chat.Bot(cl, {**chat.DEFAULT_AI, "provider": "groq"}, None, log=logs.append, sleep=lambda s: None)
+    stop = threading.Event()
+    t = threading.Thread(target=b.run, args=(stop,), daemon=True)
+    t.start()
+    for _ in range(200):
+        if "direct" in events:
+            break
+        time.sleep(0.01)
+    stop.set()
+    t.join(2)
+    assert RT.subscribed and "direct" in events and any("Instant mode on" in s for s in logs)
+
+
+def test_says_why_a_message_sent_just_before_start_is_skipped(replies):
+    cl = FakeClient()
+    cl._threads[0].messages = [msg(2000, -2)]
+    logs = []
+    b = chat.Bot(
+        cl,
+        {**chat.DEFAULT_AI, "provider": "groq"},
+        None,
+        log=logs.append,
+        sleep=lambda s: None,
+        now=lambda: START,
+    )
+    assert b.poll_once() == 0 and any("before you pressed Start" in s for s in logs)
+    b.poll_once()
+    assert sum("before you pressed Start" in s for s in logs) == 1  # said once, not every check

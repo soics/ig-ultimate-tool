@@ -541,6 +541,7 @@ class WebApp:
             "base_url": url,
             "key": body.get("key") or (a.get("key", "") if same else ""),
             "model": body.get("model") or "",
+            "model_auto": not body.get("model"),
             "stt_model": "",
         }
         if p.get("kind") is None:
@@ -588,6 +589,9 @@ class WebApp:
         stop = threading.Event()
         self.ai_stop = stop
         self.ai_log.append("Auto-reply started. Only new messages get answered.")
+        ai.refresh_model(a, self.ai_log.append)
+        self.cfg["ai"] = a
+        self.save()
         bot = chat.Bot(self.cl, a, allowed, log=self.ai_log.append)
         threading.Thread(target=bot.run, args=(stop,), daemon=True).start()
 
