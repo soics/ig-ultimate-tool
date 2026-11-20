@@ -8,13 +8,14 @@ import urllib.request
 
 import pytest
 
-from ig_ultimate import session, webapp
+from ig_ultimate import config, session, webapp
 from ig_ultimate.fake import FakeClient
 
 
 @pytest.fixture
 def srv(monkeypatch):
     monkeypatch.setattr(session, "new_client", FakeClient)  # browser logins use the pretend account
+    config.save({**config.load(), "accepted_notice": True})  # the notice gate has its own test
     server = webapp.make_server()
     threading.Thread(target=server.serve_forever, daemon=True).start()
     yield server
@@ -209,3 +210,32 @@ def test_stray_codes_and_odd_bodies_are_refused(srv):
     assert call(srv, "/api/answer", {"text": "123456"})[0] == 400
     assert srv.app.answers.empty()  # can't be picked up by the next login's code question
     assert call(srv, "/api/preview", [1, 2])[0] == 400
+
+
+def test_nothing_works_until_the_notice_is_accepted(srv):
+    srv.app.cfg["accepted_notice"] = False
+    assert call(srv, "/api/state")[1]["accepted"] is False
+    assert "Meta" in call(srv, "/api/catalog")[1]["notice"]
+    status, body = call(srv, "/api/preview", {})
+    assert status == 400 and "I agree" in body["error"]
+    assert call(srv, "/api/agree", {})[0] == 200
+    assert call(srv, "/api/preview", {})[0] == 200
+
+
+def test_every_tool_explains_itself(srv):
+    assert all(t["help"] for t in call(srv, "/api/catalog")[1]["tools"])
+
+
+def test_custom_ai_key_never_follows_a_new_address(srv, monkeypatch):
+    seen = []
+    monkeypatch.setattr(webapp.ai, "list_models", lambda s: seen.append(dict(s)) or ["m"])
+    monkeypatch.setattr(webapp.ai, "reply", lambda s, system, turns: "hi")
+    call(srv, "/api/preview", {})
+    body = {"provider": "custom", "key": "sk-1", "base_url": "https://a.example/v1", "mode": "whitelist"}
+    assert call(srv, "/api/ai/settings", body)[0] == 200
+    assert call(srv, "/api/ai/settings", {**body, "key": ""})[0] == 200  # same address: key kept
+    assert seen[-1]["key"] == "sk-1"
+    assert call(srv, "/api/ai/settings", {**body, "key": "", "base_url": "https://b.example/v1"})[0] == 200
+    assert seen[-1]["key"] == ""
+    status, err = call(srv, "/api/ai/settings", {**body, "base_url": "http://b.example/v1"})
+    assert status == 400 and "https" in err["error"]
