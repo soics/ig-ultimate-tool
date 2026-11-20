@@ -761,7 +761,10 @@ class WebApp:
             },  # fmt: skip
             "authorized": bool(self.hunter and self.hunter.auto and self.hunting()),
             "timeout": self._timeout(),
-            "found": store.query(status="possibly_available", sort="recent", limit=30)["rows"],
+            "found": [  # Instagram-checked free names first
+                *store.query(status="verified_available", sort="recent", limit=30)["rows"],
+                *store.query(status="possibly_available", sort="recent", limit=30)["rows"],
+            ][:30],
             "claimed": store.query(status="claimed", sort="recent", limit=10)["rows"],
             "history": store.history(limit=80),
         }

@@ -280,7 +280,8 @@ def test_manual_mode_finds_but_never_renames_and_runs_alone(srv):
     assert hunt(srv)[0] == 200
     status, body = call(srv, "/api/ai/start", {})
     assert status == 400 and "username finder is running" in body["error"]
-    wait(lambda: call(srv, "/api/hunt/overview", {})[1]["counts"]["possibly_available"] == 2)
+    wait(lambda: call(srv, "/api/hunt/overview", {})[1]["counts"]["verified_available"] == 1)
+    assert [r["name"] for r in call(srv, "/api/hunt/overview", {})[1]["found"]] == ["quill"]  # held left out
     assert srv.app.cl._account.username == "you"
     srv.app.cl._account.username = "quill"  # you claimed it yourself in the Instagram app
     assert call(srv, "/api/hunt/verify", {})[1] == {"username": "quill", "claimed": True}

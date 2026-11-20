@@ -319,6 +319,13 @@ class FakeClient:
             raise ig_errors.UserNotFound(username)
         return NS(pk="9", username=username)  # pretend everything else is taken
 
+    def check_username(self, username: str) -> dict:
+        self.calls.append(("check_username", username))  # a read, not a change
+        if username in self.free_names:
+            return {"username": username, "available": True, "status": "ok"}
+        return {"username": username, "available": False, "error_type": "username_is_taken",
+                "error": "This username isn't available. Please try another.", "status": "ok"}  # fmt: skip
+
     def account_edit(self, **data):
         if "username" in data:
             if data["username"] in self.held_names:

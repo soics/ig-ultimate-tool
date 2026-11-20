@@ -638,10 +638,10 @@ fieldset.langs { border: 1px solid var(--line); border-radius: 14px; display: fl
       try { const r = await api("/api/hunt/verify", {}); say(msg, r.claimed ? `Confirmed: you are now @${r.username}. The hunt is over.` : `Your account is @${r.username}. It isn't one of the found names yet.`, r.claimed ? "good" : "muted"); await refresh(); H.ov = null; }
       catch (e) { say(msg, e.message, "err"); }
     }, "btn");
-    const found = ov.found.map((r) => el("li", {}, el("strong", { textContent: "@" + r.name }), ` (score ${r.score}, ${ago(r.checked_at)}) `,
+    const found = ov.found.map((r) => el("li", {}, el("strong", { textContent: "@" + r.name }), `${r.status === "verified_available" ? " FREE (Instagram checked)" : ""} (score ${r.score}, ${ago(r.checked_at)}) `,
       btn("Copy", () => navigator.clipboard.writeText(r.name).then(() => say(msg, `Copied ${r.name}.`, "good")), "mini", { ariaLabel: `Copy ${r.name}` })));
-    p.replaceChildren(el("h3", { textContent: "Possibly available" }),
-      el("p", { className: "muted", textContent: "No account was found for these. That isn't proof: Instagram keeps names of banned and deactivated accounts. To claim one: copy it, open the Instagram app > Profile > Edit profile > Username, paste it and save. If Instagram accepts, come back and press the button below." }),
+    p.replaceChildren(el("h3", { textContent: "Found" }),
+      el("p", { className: "muted", textContent: "No account has these. FREE means Instagram's own username check agreed; held names are already left out. Claim fast: someone else can take it first. To claim one: copy it, open the Instagram app > Profile > Edit profile > Username, paste it and save. If Instagram accepts, come back and press the button below." }),
       found.length ? el("ul", {}, ...found) : el("p", { className: "muted", textContent: "None yet." }),
       el("div", { className: "row" }, check, el("a", { href: "https://www.instagram.com/accounts/edit/", target: "_blank", rel: "noopener noreferrer", textContent: "Open Instagram's Edit profile page" })), msg,
       el("h3", { textContent: "Claimed" }), ov.claimed.length ? el("ul", {}, ...ov.claimed.map((r) => el("li", { textContent: `@${r.name}, ${ago(r.checked_at)}` }))) : el("p", { className: "muted", textContent: "Nothing yet." }),
