@@ -22,7 +22,7 @@ same one every tool in this app uses). Automatic claiming therefore runs through
 is OFF unless you authorize it for one account and one session, and the default is to find names and
 let you claim them yourself in the Instagram app.
 
-Pace: one account, ~240 lookups an hour, at most one claim a minute, and it backs off when
+Pace: one account, ~240 lookups an hour, at most one claim every 3 minutes, and it backs off when
 Instagram says slow down. It never switches accounts or hides what it is to get around limits.
 """
 
@@ -58,7 +58,8 @@ EXPLAIN = (
 )
 LOOKUP_GAP = (10.0, 20.0)  # seconds between lookups: ~240 an hour; a "slow down" still backs off
 FAST_GAP = (5.0, 10.0)  # Settings > Speed: Fast. ~480 an hour: more "slow down" pauses are likely
-CLAIM_GAP = 60.0  # at most one username change attempt a minute (only after a refused one)
+# Live 2026-11-20: ~20 attempts 3 min apart went through; 1 min apart hit "Please wait a few minutes" after 4.
+CLAIM_GAP = 180.0  # at most one username change attempt every 3 minutes (only after a refused one)
 CHECK_OFF = 30 * 60.0  # the username check said "slow down": claim directly for 30 min instead
 CLAIM_REFUSED = 7 * 86400.0  # a change refused for a reason we don't recognise: not tried again for a week
 BACKOFF = (15 * 60.0, 2 * 3600.0)  # "too many requests": 15 min, doubling, max 2 h
