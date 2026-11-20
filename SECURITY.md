@@ -28,6 +28,7 @@ Nothing is sent to the authors. There is no telemetry.
 - Codex runs in its read-only sandbox with your own Codex config ignored. **Read-only still means it can read every file your user account can.** That's why file-reading AIs refuse to run in *Everyone* mode, and the app warns before you pick Codex.
 - In Whitelist / Only-these modes, a chat where anyone outside your list is talking (e.g. a group) is skipped, and outsiders' messages never reach the AI.
 - Hourly reply caps prevent runaway bot-to-bot conversations.
+- Your AI key only travels over https (plain http only to a server on this computer), and a saved key is never reused for a different server address.
 - The browser version listens only on `127.0.0.1`, checks the Host header, and needs a secret token on every request. The link it opens carries a one-time code that's swapped for a browser-only cookie, so the token never appears in your address bar or the browser's command line.
 
 ## Reporting a vulnerability

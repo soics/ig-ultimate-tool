@@ -125,6 +125,16 @@ def fetch_media(url: str) -> bytes | None:
 
 
 # ---------------------------------------------------------------- OpenAI-style
+def check_url(url: str) -> str:
+    """A server URL the key may be sent to: https, or plain http only to this computer."""
+    u = parse_url(url.strip())
+    if u.host and (
+        u.scheme == "https" or (u.scheme == "http" and u.host in ("localhost", "127.0.0.1", "[::1]"))
+    ):
+        return url.strip()
+    raise AIError("Use an https:// address. Plain http is only allowed for a server on this computer.")
+
+
 def _headers(s: dict) -> dict:
     return {"Authorization": f"Bearer {s['key']}"} if s.get("key") else {}
 

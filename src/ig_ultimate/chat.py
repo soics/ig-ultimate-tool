@@ -361,7 +361,11 @@ def setup_ai(app, a: dict) -> None:
     s = {"provider": provider, "key": "", "model": "", "stt_model": "", "base_url": p.get("base_url", "")}
     console.print(f"[dim]{p['privacy']}[/]")
     if provider == "custom":
-        s["base_url"] = ask("Server URL (ends in /v1):")
+        try:
+            s["base_url"] = ai.check_url(ask("Server URL (ends in /v1):"))
+        except ai.AIError as exc:
+            console.print(f"[red]{exc}[/]")
+            raise Back from None
     if p.get("kind") != "cli" and not p.get("no_key"):
         if p.get("key_url"):
             console.print(f"Get a key here: [link]{p['key_url']}[/]")

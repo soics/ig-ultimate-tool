@@ -23,6 +23,7 @@ from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
 
 from . import ai, chat, config, engine, paths, session, tools
+from .cli import NOTICE
 from .engine import Plan, Stopped
 
 MAX_BODY = 1_000_000
@@ -46,56 +47,67 @@ def _f(name, label, kind="number", default=""):
 LIMIT = _f("limit", "How many at most (empty = all)")
 OLDER = _f("older", "Only older than how many months (empty = all)")
 
-# id -> (section, label, fields, builder(cl, params, keep), extra)
+KEPT = " People on your keep-list (Settings) are never touched."
+
+# id -> (section, label, fields, builder(cl, params, keep), extra); extra["help"] = what it really does
 TOOLS: dict[str, tuple] = {
     "show_not_back": (
         "Followers",
         "Show who doesn't follow me back",
         [],
         lambda cl, p, k: tools.plan_unfollow(cl, "not_back"),
-        {"readonly": True},
+        {
+            "readonly": True,
+            "help": "Just a list of accounts you follow that don't follow you. Changes nothing.",
+        },
     ),
     "unfollow_not_back": (
         "Followers",
         "Unfollow people who don't follow me back",
         [LIMIT],
         lambda cl, p, k: tools.plan_unfollow(cl, "not_back", k, limit=_int(p.limit)),
-        {},
+        {"help": "Unfollows accounts that don't follow you back. Re-follow anyone by hand later." + KEPT},
     ),
     "unfollow_all": (
         "Followers",
         "Unfollow everyone",
         [LIMIT],
         lambda cl, p, k: tools.plan_unfollow(cl, "all", k, limit=_int(p.limit)),
-        {},
+        {"help": "Unfollows every account you follow." + KEPT},
     ),
     "unfollow_these": (
         "Followers",
         "Unfollow specific usernames",
         [_f("usernames", "Usernames (spaces or commas)", "text")],
         lambda cl, p, k: tools.plan_unfollow(cl, "these", k, usernames=_names(p.usernames)),
-        {},
+        {"help": "Paste usernames; only the ones you actually follow are unfollowed." + KEPT},
     ),
     "remove_not_back": (
         "Followers",
         "Remove followers I don't follow back",
         [LIMIT],
         lambda cl, p, k: tools.plan_remove_followers(cl, "not_back", k, limit=_int(p.limit)),
-        {},
+        {
+            "help": "Removes them from your followers without blocking. They aren't told, can follow again."
+            + KEPT
+        },
     ),
     "remove_all": (
         "Followers",
         "Remove all my followers",
         [LIMIT],
         lambda cl, p, k: tools.plan_remove_followers(cl, "all", k, limit=_int(p.limit)),
-        {},
+        {
+            "help": "Removes every follower without blocking. Make the account private first if you don't "
+            "want them to follow back." + KEPT
+        },
     ),
     "decline_requests": (
         "Followers",
         "Decline all follow requests",
         [],
         lambda cl, p, k: tools.plan_decline_requests(cl),
-        {},
+        {"help": "Declines every pending request (private accounts). They aren't told."},
     ),
     "delete_idle": (
         "Chats",
@@ -104,61 +116,103 @@ TOOLS: dict[str, tuple] = {
         lambda cl, p, k: tools.plan_delete_chats(
             cl, months=_int(p.months) or 4, include_groups=bool(p.groups)
         ),
-        {},
+        {
+            "help": "Deletes old chats from your inbox only, like the app's Delete. The other person keeps "
+            "their copy. Group chats: you stay in the group."
+        },
     ),
     "delete_chats": (
         "Chats",
         "Delete chats (untick the ones to keep)",
         [_f("groups", "Include group chats", "checkbox")],
         lambda cl, p, k: tools.plan_delete_chats(cl, include_groups=bool(p.groups)),
-        {},
+        {"help": "Deletes chats from your inbox only. The other person keeps their copy."},
     ),
     "leave_groups": (
         "Chats",
         "Leave group chats (untick the ones to keep)",
         [],
         lambda cl, p, k: tools.plan_leave_groups(cl),
-        {},
+        {"help": "Leaves the group (members see that you left) and deletes it from your inbox."},
     ),
     "archive_posts": (
         "Posts",
         "Archive posts & reels (you can restore them)",
         [OLDER],
         lambda cl, p, k: tools.plan_posts(cl, "archive", _int(p.older)),
-        {},
+        {"help": "Hides posts and reels from your profile. Likes and comments are kept; restore any time."},
     ),
     "delete_posts": (
         "Posts",
         "Delete posts & reels for good",
         [OLDER],
         lambda cl, p, k: tools.plan_posts(cl, "delete", _int(p.older)),
-        {},
+        {
+            "help": "Permanently deletes posts and reels, with their likes and comments. Can't be undone: "
+            "archive instead if you're not sure."
+        },
     ),
-    "unarchive": ("Posts", "Restore archived posts", [], lambda cl, p, k: tools.plan_unarchive(cl), {}),
-    "stories": ("Posts", "Delete my current stories", [], lambda cl, p, k: tools.plan_stories(cl), {}),
-    "highlights": ("Posts", "Delete my highlights", [], lambda cl, p, k: tools.plan_highlights(cl), {}),
-    "unlike": ("Footprint", "Unlike everything I ever liked", [], lambda cl, p, k: tools.plan_unlike(cl), {}),
-    "unsave": ("Footprint", "Unsave everything I saved", [], lambda cl, p, k: tools.plan_unsave(cl), {}),
+    "unarchive": (
+        "Posts",
+        "Restore archived posts",
+        [],
+        lambda cl, p, k: tools.plan_unarchive(cl),
+        {"help": "Puts archived posts back on your profile."},
+    ),
+    "stories": (
+        "Posts",
+        "Delete my current stories",
+        [],
+        lambda cl, p, k: tools.plan_stories(cl),
+        {"help": "Deletes stories that are live right now (the last 24 hours)."},
+    ),
+    "highlights": (
+        "Posts",
+        "Delete my highlights",
+        [],
+        lambda cl, p, k: tools.plan_highlights(cl),
+        {"help": "Deletes the highlight circles on your profile. The stories inside stay in your archive."},
+    ),
+    "unlike": (
+        "Footprint",
+        "Unlike everything I ever liked",
+        [],
+        lambda cl, p, k: tools.plan_unlike(cl),
+        {
+            "help": "Removes your likes from posts and reels. Instagram only lists your recent likes, "
+            "so very old ones may stay."
+        },
+    ),
+    "unsave": (
+        "Footprint",
+        "Unsave everything I saved",
+        [],
+        lambda cl, p, k: tools.plan_unsave(cl),
+        {"help": "Empties your Saved posts. Nobody else is affected."},
+    ),
     "wipe_comments": (
         "Footprint",
         "Delete all comments on my posts",
         [],
         lambda cl, p, k: tools.plan_comments_on_my_posts(cl),
-        {},
+        {"help": "Deletes every comment under your own posts, yours and other people's."},
     ),
     "untag": (
         "Footprint",
         "Remove me from photos I'm tagged in",
         [],
         lambda cl, p, k: tools.plan_untag(cl),
-        {},
+        {"help": "Removes your tag from other people's posts. The posts stay; your name comes off them."},
     ),
     "profile": (
         "Profile",
         "Profile clean-up (untick what to keep)",
         [],
         lambda cl, p, k: tools.plan_profile(cl),
-        {},
+        {
+            "help": "Clears your bio, link, display name and profile picture, and makes the account private. "
+            "Your username stays."
+        },
     ),
 }
 
@@ -212,6 +266,7 @@ class WebApp:
         a = chat.settings(self.cfg)
         job = self.job and {**self.job, "lines": list(self.job["lines"])[-80:]}
         return {
+            "accepted": bool(self.cfg.get("accepted_notice")),
             "logged_in": self.cl is not None,
             "preview": self.preview,
             "username": self.username,
@@ -246,6 +301,7 @@ class WebApp:
             ],
             "claude_models": [{"id": m, "label": label} for m, label in ai.PRESETS["anthropic"]["models"]],
             "modes": chat.MODES,
+            "notice": NOTICE,
         }
 
     def save(self):
@@ -454,7 +510,8 @@ class WebApp:
             )
         said = ""
         provider = body.get("provider") or ""
-        if provider and (provider != a["provider"] or body.get("key") or body.get("model")):
+        new_url = body.get("base_url", "") not in ("", a.get("base_url", ""))
+        if provider and (provider != a["provider"] or body.get("key") or body.get("model") or new_url):
             said = self._setup_provider(a, provider, body)
         self.cfg["ai"] = a
         self.save()
@@ -464,14 +521,17 @@ class WebApp:
         p = ai.PRESETS.get(provider)
         if p is None:
             raise ValueError("Unknown AI provider.")
-        same = provider == a.get("provider")
+        # Only the "custom" provider takes a URL, and a saved key is reused only for the same address.
+        url = (
+            ai.check_url(body.get("base_url") or a.get("base_url", ""))
+            if provider == "custom"
+            else p.get("base_url", "")
+        )
+        same = provider == a.get("provider") and url == a.get("base_url", "")
         s = {
             "provider": provider,
-            # Only the "custom" provider takes a URL, so a saved key can't be sent anywhere else.
-            "base_url": (body.get("base_url") or a.get("base_url", ""))
-            if provider == "custom"
-            else p.get("base_url", ""),
-            "key": body.get("key") or (a.get("key", "") if same and not body.get("base_url") else ""),
+            "base_url": url,
+            "key": body.get("key") or (a.get("key", "") if same else ""),
             "model": body.get("model") or "",
             "stt_model": "",
         }
@@ -530,6 +590,11 @@ class WebApp:
 
     # ------------------------------------------------------------ routing
     def post(self, path: str, body: dict):
+        if path == "/api/agree":
+            self.cfg["accepted_notice"] = True
+            return self.save()
+        if not self.cfg.get("accepted_notice"):  # same notice the terminal asks you to agree to
+            raise ValueError("Read the notice and press I agree first.")
         if path == "/api/login":
             return self.start_login(
                 str(body.get("username", "")).strip().lstrip("@"), str(body.get("password", ""))

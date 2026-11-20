@@ -101,6 +101,19 @@ def test_claude_uses_official_sdk_with_fallbacks(monkeypatch):
     assert ai.reply({"provider": "anthropic", "key": "k", "model": "claude-haiku-5-5"}, "sys", turns) == "yo"
 
 
+def test_keys_only_go_over_https_or_to_this_computer():
+    for ok in (
+        "https://x.example/v1",
+        "http://localhost:11434/v1",
+        "http://127.0.0.1:8080/v1",
+        "http://[::1]:1/v1",
+    ):
+        assert ai.check_url(ok) == ok
+    for bad in ("http://x.example/v1", "http://localhost.evil.example/v1", "ftp://x", "", "x.example"):
+        with pytest.raises(ai.AIError):
+            ai.check_url(bad)
+
+
 def test_codex_gets_the_dm_on_stdin_never_on_the_command_line(monkeypatch):
     seen = {}
     monkeypatch.setattr(ai.shutil, "which", lambda exe: f"/opt/{exe}.cmd")
