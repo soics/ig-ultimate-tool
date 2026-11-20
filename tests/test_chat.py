@@ -1,3 +1,4 @@
+import time
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace as NS
 
@@ -49,11 +50,12 @@ def test_messages_from_before_start_are_never_answered(replies):
     assert bot(cl).poll_once() == 0 and not sends(cl)
 
 
+@pytest.mark.skipif(
+    not hasattr(time, "tzset"), reason="switching time zones needs time.tzset (not on Windows)"
+)
 def test_dm_times_from_instagrapi_are_local_time_not_utc(replies, monkeypatch):
     # instagrapi returns naive local times. West of UTC a brand-new DM looked hours old, so nothing
     # was ever answered; east of UTC old DMs looked new.
-    import time
-
     for tz in ("America/Lower_Princes", "Asia/Tokyo"):
         monkeypatch.setenv("TZ", tz)
         time.tzset()
