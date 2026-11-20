@@ -191,8 +191,14 @@ The same steps show in the app when you pick an AI. Open the one you chose:
 **How to use it (4 steps):**
 
 1. Click **Username finder** in the menu, then the **Generator** tab. Pick the kind of names you like:
-   - **Balanced (a bit of everything)**: the default. A mix of all the kinds below, 3 to 6 characters. Good if you're not sure.
-   - **Ultra OG**: the shortest names there are (1 to 3 characters). Almost all are taken, but they're the most wanted.
+   - **OG path (recommended)**: the default. It goes step by step and finishes each step before the next:
+     1. real words (4 letters or more) from many languages,
+     2. real 3-letter words,
+     3. every 3-character name (letters first, then letters with numbers),
+     4. every 4-letter name, the easiest to say first.
+   - **Balanced (a bit of everything)**: takes turns between all the kinds below, 3 to 6 characters.
+   - **Ultra OG**: every 3-character name. Almost all are taken, but they're the most wanted. (1- and 2-character names aren't hunted: every one was taken years ago.)
+   - **Every 4-letter name**: all 456,976 of them, easiest to say first. At full speed that's about 80 days.
    - **Short dictionary** (3-4 letters) or **Premium dictionary** (5-6 letters): real words, like `zen` or `quill`.
    - **Rare vocabulary**: real but unusual words.
    - **Multilingual**: nice words from 18 languages.
@@ -201,7 +207,7 @@ The same steps show in the app when you pick an AI. Open the one you chose:
    - **Structured alphanumeric**: short mixes of letters and numbers.
    - **Your own names**: type names you thought of yourself.
 2. Click the **Discovery** tab. It shows the best names it hasn't checked yet. Click a name to see *why* it got its score. Press the ⭐ star on names you love (they get checked first) and hide names you don't like. It learns what you like.
-3. Click the **Hunter** tab, then **Start hunting**. Now leave it running. It checks about **120 names an hour** (one every 20 to 40 seconds), and if Instagram says "slow down", it waits by itself.
+3. Click the **Hunter** tab, then **Start hunting**. Now leave it running. It checks about **240 names an hour** (one every 10 to 20 seconds), and if Instagram says "slow down", it waits by itself.
 4. When it finds a name with no account, it shows up in the **Results** tab as **possibly available**. To grab it:
    1. Copy the name.
    2. Open the Instagram app → your profile → **Edit profile** → **Username**, paste it and save.
