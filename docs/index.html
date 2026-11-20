@@ -73,7 +73,7 @@ section { padding-block: clamp(4.5rem, 9vw, 7.5rem); }
 
 /* ------------------------------------------------ hero */
 #field { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
-.hero { min-height: 100svh; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: center; gap: 2rem; padding-top: 6rem; padding-bottom: 3rem; pointer-events: none; }
+.hero { min-height: 100svh; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: center; gap: 2rem; padding-top: 4.5rem; padding-bottom: 1.5rem; pointer-events: none; }
 .hero > * { pointer-events: auto; }
 @media (max-width: 900px) { .hero { grid-template-columns: 1fr; min-height: 0; padding-top: 6.5rem; } }
 .hero h1 { font-size: clamp(2.5rem, 5.6vw, 5rem); line-height: .95; letter-spacing: -.05em; font-weight: 800; }
@@ -86,8 +86,19 @@ section { padding-block: clamp(4.5rem, 9vw, 7.5rem); }
 .trust { margin-top: 1.4rem; font-size: .95rem; color: var(--warm); }
 
 /* the real 3D phone */
-.phonewrap { display: grid; justify-items: center; gap: .9rem; }
-.stage3d { position: relative; width: 100%; height: min(640px, 92vw); min-height: 460px; cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+/* controls sit beside the phone on wide screens so the phone can use the full screen height */
+.phonewrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem; }
+.controls { display: grid; gap: .9rem; justify-items: start; }
+.controls .scenes { flex-direction: column; align-items: stretch; }
+.controls .hint { text-align: left; max-width: 12rem; }
+@media (max-width: 900px) {
+  .phonewrap { grid-template-columns: 1fr; }
+  .controls { justify-items: center; }
+  .controls .scenes { flex-direction: row; }
+  .controls .hint { text-align: center; max-width: none; }
+}
+.stage3d { position: relative; width: 100%; height: clamp(460px, calc(100svh - 110px), 900px); cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+@media (max-width: 900px) { .stage3d { height: min(760px, 135vw); } }
 .stage3d:active { cursor: grabbing; }
 .stage3d canvas { display: block; width: 100%; height: 100%; }
 .floor { position: absolute; left: 50%; bottom: 3%; width: 46%; height: 34px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, rgba(22,19,16,.32), rgba(22,19,16,0)); filter: blur(3px); pointer-events: none; }
@@ -261,6 +272,7 @@ footer button { background: none; border: 0; color: var(--cream); text-decoratio
       </div>
       <div class="phonewrap">
         <div class="stage3d" id="stage3d" role="img" aria-label="Illustration: a phone showing what IG Ultimate Tool does, screen by screen."><div class="floor" id="floor"></div></div>
+        <div class="controls">
         <div class="scenes" role="group" aria-label="Show on the phone">
           <button class="chipbtn" type="button" data-scene="unfollow" aria-pressed="true">Unfollow</button>
           <button class="chipbtn" type="button" data-scene="chats" aria-pressed="false">Old chats</button>
@@ -275,6 +287,7 @@ footer button { background: none; border: 0; color: var(--cream); text-decoratio
           <button class="sw" type="button" data-finish="cream" aria-pressed="false" aria-label="Cream" style="background:#e7d9bd"></button>
         </div>
         <p class="hint">Drag the phone to spin it. <button class="still" type="button" id="still" aria-pressed="false">Pause animations</button></p>
+        </div>
       </div>
     </div>
   </section>
@@ -473,6 +486,18 @@ footer button { background: none; border: 0; color: var(--cream); text-decoratio
   const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
   window.igut = { calm, still: calm };
 
+  // ---------------------------------------------------- always open at the top; section links scroll without adding #hash to the URL
+  history.scrollRestoration = "manual";
+  if (location.hash) { history.replaceState(null, "", location.pathname + location.search); addEventListener("load", () => scrollTo({ top: 0, behavior: "instant" })); }
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest('a[href^="#"]'); const t = a && document.querySelector(a.getAttribute("href"));
+    if (!t) return;
+    e.preventDefault();
+    t.scrollIntoView({ behavior: calm ? "auto" : "smooth" });
+    if (!t.hasAttribute("tabindex")) t.setAttribute("tabindex", "-1");
+    t.focus({ preventScroll: true });  // keyboard users continue from the section they jumped to
+  });
+
   // ---------------------------------------------------- pause animations (for people who haven't set reduced motion)
   $("still").onclick = (e) => {
     window.igut.still = !window.igut.still;
@@ -528,7 +553,7 @@ footer button { background: none; border: 0; color: var(--cream); text-decoratio
       if (w.goal && now - w.at > 5000) w.goal = 0;
       w.cut += (w.goal - w.cut) * (calm ? 1 : 0.12);
       if (Math.abs(w.goal - w.cut) > 0.01) moving = true; else w.cut = w.goal;
-      cx.fillStyle = `rgba(22,19,16,${0.045 + w.cut * 0.05})`;
+      cx.fillStyle = `rgba(22,19,16,${0.09 + w.cut * 0.5})`;
       cx.fillText(w.t, w.x, w.y);
       if (w.cut > 0.01) { cx.fillStyle = `rgba(255,61,127,${0.55 * Math.min(1, w.cut * 1.5)})`; cx.fillRect(w.x - 2, w.y - 6, (w.w + 4) * w.cut, 2.5); }
     }
@@ -1116,7 +1141,8 @@ if (!renderer) {
     const r = stage.getBoundingClientRect();
     renderer.setSize(r.width, r.height, false);
     camera.aspect = r.width / r.height;
-    camera.position.z = camera.aspect < 0.62 ? 6.4 : 5.4;
+    // fit the phone (1.63 tall, ~0.95 wide when tilted) with a small margin for tilt and bob
+    camera.position.z = Math.max(1.8, 0.95 / camera.aspect) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
     camera.updateProjectionMatrix();
   };
   new ResizeObserver(fit).observe(stage); fit();
