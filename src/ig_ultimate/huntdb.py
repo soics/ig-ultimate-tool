@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS history (
 CORRUPT = re.compile(r"not a database|malformed|corrupt", re.I)
 GEN_VERSION = "2"  # bump when a generator's output changes, so categories get topped up again
 MAX_CUSTOM = 500
+OPEN = {"invented": names.invented, "four": names.four}  # too big to store at once: added in batches
 
 
 class HuntBusy(RuntimeError):
@@ -126,6 +127,12 @@ class Store:
         if self.db.execute("PRAGMA quick_check").fetchone()[0] != "ok":
             raise sqlite3.DatabaseError("database disk image is malformed (quick_check failed)")
         self.db.executescript(SCHEMA)
+        with self.db:  # v1.3.0 filed "already exists" refusals as unknown and kept retrying them
+            self.db.execute(
+                "UPDATE candidates SET status='held', attempts=0, next_at=checked_at + ? "
+                "WHERE status='unknown' AND note LIKE '%refused the change%already exists%'",
+                (RECHECK["held"],),
+            )
 
     def close(self):
         with self.lock:
@@ -200,25 +207,27 @@ class Store:
             return self.db.total_changes - before
 
     def ensure(self, categories) -> None:
-        """Generate each finite category once; the open-ended invented one is topped up in batches."""
+        """Generate each finite category once; the open-ended ones are topped up in batches."""
         for cat in categories:
             if cat in ("custom",):
                 continue
-            if cat == "invented":
-                self.top_up()
+            if cat in OPEN:
+                self.top_up(cat)
             elif self.get(f"ingested:{cat}") != GEN_VERSION:
                 self._insert((n, cat) for n in names.generate(cat))
                 self.put(f"ingested:{cat}", GEN_VERSION)
 
-    def top_up(self, low: int = 200, batch: int = 500) -> None:
+    def top_up(self, cat: str = "invented", low: int = 200, batch: int = 500) -> None:
         left = self._read(
-            "SELECT COUNT(*) FROM candidates WHERE tags LIKE '%,invented,%' AND status='unchecked'"
+            "SELECT COUNT(*) FROM candidates WHERE tags LIKE ? AND status='unchecked'", (f"%,{cat},%",)
         )[0][0]
         if left >= low:
             return
-        got = list(itertools.islice(names.invented(int(self.get("cursor:invented", "0"))), batch))
-        self._insert((name, "invented") for _i, name in got)
-        self.put("cursor:invented", got[-1][0] + 1)
+        got = list(itertools.islice(OPEN[cat](int(self.get(f"cursor:{cat}", "0"))), batch))
+        if not got:  # a finite open space (every 4-letter name) can run out
+            return
+        self._insert((name, cat) for _i, name in got)
+        self.put(f"cursor:{cat}", got[-1][0] + 1)
 
     def add_custom(self, raw: list[str], priority: int = 1) -> dict:
         """Your own names. priority: 1 = before everything, 0 = by score, -1 = after everything."""

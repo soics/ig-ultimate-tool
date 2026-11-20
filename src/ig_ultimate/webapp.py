@@ -683,7 +683,7 @@ class WebApp:
         return [x for x in body.get("langs") or [] if isinstance(x, str) and x.isalpha()][:20]
 
     def hunt_start(self, body: dict):
-        preset = str(body.get("preset") or "balanced")
+        preset = str(body.get("preset") or "og")
         if preset not in names.PRESETS:
             raise ValueError("Unknown name style.")
         _l, _c, _p, lo, hi = names.PRESETS[preset]

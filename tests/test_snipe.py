@@ -140,6 +140,25 @@ def test_username_change_limit_is_not_mistaken_for_held():
     assert store.row("quill")["status"] == "unknown"  # v1 wrongly buried every later free name as held
 
 
+def test_og_path_finishes_each_step_before_the_next():
+    from ig_ultimate import names
+
+    store = huntdb.Store("1000")
+    h = snipe.Hunter(snipe.InstagrapiVerifier(FakeClient()), store, "1000", "you", log=print)
+    assert h.preset == "og" and snipe.LOOKUP_GAP == (10.0, 20.0)  # the default, ~240 lookups an hour
+    store.ensure(h.cats)
+    lex = names.lexicon()
+    for tag, check in (
+        ("words", lambda n: n in lex and len(n) >= 4),  # 1. real words
+        ("words3", lambda n: n in lex and len(n) == 3),  # 2. real 3-letter words
+        ("ultra", lambda n: len(n) == 3),  # 3. every 3-character name
+        ("four", lambda n: len(n) == 4 and n.isalpha()),  # 4. every 4-letter name
+    ):
+        got = h._next(None)
+        assert check(got), (tag, got)
+        store.db.execute(f"UPDATE candidates SET status='taken', next_at=1e18 WHERE tags LIKE '%,{tag},%'")  # noqa: S608
+
+
 def test_already_exists_is_held_and_the_hunt_moves_on():
     cl = FakeClient()
     cl.free_names.add("folio")  # the lookup finds nobody...

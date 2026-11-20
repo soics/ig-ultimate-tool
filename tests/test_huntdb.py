@@ -62,6 +62,16 @@ def test_a_lookup_that_finds_nobody_keeps_the_no_answer_count():
     assert s.row("lumen")["next_at"] > time.time() + 0.9 * huntdb.DAY
 
 
+def test_old_already_exists_refusals_are_relabelled_held_on_open():
+    s = huntdb.Store("1")
+    s.add_custom(["folio"], 0)
+    s.mark("folio", "unknown", "Instagram refused the change without saying why: "
+           "{'errors': ['A user with that username already exists.']}")  # fmt: skip
+    s.close()
+    s = huntdb.Store("1")
+    assert s.row("folio")["status"] == "held" and s.pick(["custom"]) is None
+
+
 def test_starred_and_first_names_join_every_hunt_style():
     s = huntdb.Store("1")
     s.ensure(["dark"])

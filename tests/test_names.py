@@ -59,10 +59,19 @@ def test_lexicon_merges_duplicates_and_keeps_provenance():
 
 def test_generators_are_deterministic_bounded_and_clean():
     u = list(names.ultra())
-    assert len(u) == len(set(u)) == 26 + 26 * 36 + 26 * 36 * 36 and all(x[0].isalpha() for x in u)
+    assert len(u) == len(set(u)) == 26 * 36 * 36 and all(x[0].isalpha() for x in u)  # no 1-2 chars
     assert u == list(names.ultra())  # same order every run, so a hunt can resume
     a = list(names.alnum())
-    assert len(a) == len(set(a)) and all(any(c.isdigit() for c in x) for x in a)
+    assert len(a) == len(set(a)) and all(any(c.isdigit() for c in x) and len(x) >= 3 for x in a)
+    assert all(p[3] >= 3 for k, p in names.PRESETS.items() if k != "custom")
+    f = list(names.four())
+    assert len(f) == len(set(f)) == 26**4 and [i for i, _ in f] == list(range(26**4))
+    assert all(n.isalpha() and len(n) == 4 for _, n in f)
+    assert list(names.four(f[200_000][0]))[:3] == f[200_000:200_003]  # resumes mid-way
+    first = [n for _, n in f[:1000]]
+    assert sum(map(names._pronounce, first)) > sum(
+        names._pronounce(n) for _, n in f[-1000:]
+    )  # say-able first
     inv = list(itertools.islice(names.invented(), 300))
     assert inv == list(itertools.islice(names.invented(), 300))
     assert list(itertools.islice(names.invented(inv[100][0]), 5)) == inv[100:105]  # resumes mid-way
