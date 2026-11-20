@@ -1,228 +1,519 @@
-"""Username finder: hunts for a free, clean username and claims it for the account you're logged into.
+"""Username hunter: checks the best-ranked names one at a time, records an honest result for each,
+and (only if you switched it on for this session) claims a free one for your account, then stops.
 
-Order (shortest first): 2-letter words, 2-character combos, 3-letter words, 3-character combos
-(like pvp, qc1), then 4-, 5- and 6+-letter uncommon words. Every third check goes to the uncommon
-words instead, because that's where free names actually turn up; otherwise they'd wait days behind
-the ~35,000 short combos, almost all of which are taken.
+Pipeline: names.py generates, validates and scores -> huntdb.Store dedupes, queues and remembers ->
+a Verifier asks Instagram -> the result is written down before anything else happens.
 
-How a name is checked: a normal profile lookup. "No such account" isn't proof (Instagram holds the
-names of banned and deactivated accounts), so then it tries to claim it; a refusal means "held".
-One account, human pace, and it slows right down when Instagram says so. It never switches
-accounts to get around Instagram's limits.
+What a result means:
+- "taken": an account has the name.
+- "possibly available": no account was found. That is NOT proof: Instagram keeps the names of banned,
+  deactivated and recently renamed accounts. Only Instagram accepting the change proves it.
+- "held": no account, but Instagram refused the change.
+- "unknown" / "rate limited": no usable answer. The name is tried again later; it never counts as checked.
+
+Platform honesty: Meta's official Instagram API can read a username but has no way to check or change
+one. The only verifier here uses instagrapi, an unofficial client of Instagram's private app API (the
+same one every tool in this app uses). Automatic claiming therefore runs through that unofficial call,
+is OFF unless you authorize it for one account and one session, and the default is to find names and
+let you claim them yourself in the Instagram app.
+
+Pace: one account, ~120 lookups an hour, at most one claim every 3 minutes, and it backs off when
+Instagram says slow down. It never switches accounts or hides what it is to get around limits.
 """
 
 from __future__ import annotations
 
+import itertools
 import random
 import re
-import string
 import threading
+import time
+import weakref
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from instagrapi import exceptions as ig_errors
 
-from . import paths
+from . import huntdb, names
 from .engine import explain
 
-WORDS = {
-    2: """ah am an as at aw ax be by do eh ex go ha he hi hm id if in is it jo ka la lo ma me mi mu my
-        no nu of oh ok om on op or ox oy pa pi qi re so ta ti to uh um un up us we xi ya ye yo zo""",
-    3: """ace act air ale alt amp ape arc ark art ash awe axe bay bee bit boa bog bot bow box bud bug
-        cab cam cap cob cog cow cub cue cup dab dew dim din dot dub dun dye eel elf elk elm emu era eve
-        fad fan fax fez fig fin fir fix fly fob foe fog fox fry fur gem gig gnu goo gum gym hex hog hop
-        how hub hue hum ice icy ink inn ion ivy jab jam jar jaw jet jig jog joy jug keg key kin kit lab
-        lag lap lax lid lit lob log lot lux map mew mix mob mod moo mud mug nab nap neo net nib nil nod
-        nox nub nut oak oar oat odd ode ohm oil orb ore owl pad pal paw pax pea peg pew pod pop pry pug
-        pun pup rad ram ray rex rib rig rim rot row rue rum rye sap saw sky sly sob sod soy spa spy sub
-        sum tab tag tan tar tea tic tin tip toe ton tow toy tux urn van vat vex vim vow wax web wig wit
-        wok wow yak yam yen yew yin zap zen zip zoo""",
-    4: """aeon apex aqua aria aura axis bane bard bask bevy blip bloc bolt brim brio byte calm chic chum
-        clad coda coil cove crux cusp czar daze deft drip dune dusk echo edge epic etch fern fizz flux
-        foam fray fume fuse gale gaze glib glow goat gust halo haze hymn iris isle jade jinx jolt keen
-        kiln kite knot koan lark larp lava lens lilt lore lull lume lure lush lynx mesa mint mire mist
-        moss muse myth neon node nova onyx opal oryx pith plum pyre quay rift rime rizz rune sage saga
-        silk silt slab sloe soot spry stoa sumo swag tarn teal tide tome tusk vale vamp veil vibe void
-        volt wade waif wane wasp whim wick wisp yeti yoke zeal zest zinc zing""",
-    5: """amber arbor aspen azure basil bayou blaze bliss bloom brine cadet cairn cedar chaos chime
-        cinch civic clove cobra comet coral crest crisp crypt cumin cyber delta dingo ditto dogma drift
-        druid ember epoch ether fable fjord flair flint flora froth gecko ghost glade gleam glyph gnome
-        grail gusto haiku haven helix heron hydra igloo inlet ivory jewel joust karma kayak koala larps
-        latch lilac lotus lucid lunar lyric macaw magma mango manor maple matte mirth mocha nomad oasis
-        olive omega optic orbit otter oxide pearl pecan petal pixel plume prism pulse quail qualm quark
-        query quest quill quilt quirk radar raven realm relic rhino rogue runic sable sauce sepia shire
-        siren slate sonic spire squid stoic storm swirl synth tango tapir terra thorn thyme tiara tonic
-        totem trove tulip umbra vapor vault venom verge vigil vinyl viper vivid vogue waltz whirl xenon
-        yacht zebra zesty""",
-    6: """quantum larpin larping everclear aether amulet arcade astral aurora banshee bazaar bonsai
-        cactus candor cipher citrus cobalt cosmic coyote cypher dazzle eclipse elixir enigma falcon
-        fathom frenzy galaxy garnet geyser glacier glitch gothic hermit hollow indigo jasper jigsaw
-        jovial kismet lagoon lantern legend lichen lowkey marble meadow mirage mosaic myriad nebula
-        nectar nimbus obsidian octane orchid oracle paprika phantom phoenix plasma prairie quartz quasar
-        quiver ravine raptor reverie riddle saffron salvo sapphire scarab sequin sherpa shogun sierra
-        solace sphinx spiral static stellar summit tandem thicket thistle thunder timber topaz torque
-        toucan trident truffle tundra turbo tuxedo unicorn utopia velvet verdant vertex vessel vintage
-        vortex voyage walrus wander willow wizard wombat yonder zealot zenith zephyr zigzag""",
-}
 EXPLAIN = (
-    "Hunts for a free username and gives it to the account you're logged into, then stops.\n"
-    "Order: 2-letter words, 2-character combos, 3-letter words, 3-character combos (like pvp or qc1), "
-    "then rare 4-, 5- and 6+-letter words. Every third check tries a rare word, because that's where "
-    "free names really turn up.\n"
-    "Be realistic: almost every 2- and 3-character name is taken or held by Instagram, so the hunt can "
-    "run for days or weeks. It checks about 120 names an hour and pauses by itself when Instagram says "
-    "slow down. It carries on where it stopped next time, and keeps going round as long as the "
-    "computer is on and awake.\n"
-    "When it gets one, your account is RENAMED to it straight away and your old username becomes free "
-    "for anyone. Instagram only lets you change your username a few times in 14 days."
+    "Hunts for a free, good-looking username: the best-ranked names first, one at a time.\n"
+    "Pick a style (short words, rare words, other languages, invented names...). Every name gets a "
+    "quality score you can open, and you can star or hide names to teach it your taste.\n"
+    "Be realistic: almost every short name is taken or held by Instagram, so a hunt can run for days. "
+    "It checks about 120 names an hour and pauses by itself when Instagram says slow down. It only runs "
+    "while this page is open: close the page and it stops within seconds, keeping its progress.\n"
+    "'No account has it' is not proof a name is free. By default you claim it yourself in the Instagram "
+    "app. Automatic claiming is unofficial (Instagram has no official way to do it), must be switched "
+    "on each time, and RENAMES your account straight away: your old username becomes free for anyone."
 )
-OK_NAME = re.compile(r"^[a-z0-9._]{1,30}$")
 LOOKUP_GAP = (20.0, 40.0)  # seconds between lookups: ~120 an hour, like someone browsing profiles
 CLAIM_GAP = 180.0  # at most one username change attempt every 3 minutes
-BACKOFF = (15 * 60.0, 2 * 3600.0)  # when Instagram says "too many requests": 15 min, doubling, max 2 h
+BACKOFF = (15 * 60.0, 2 * 3600.0)  # "too many requests": 15 min, doubling, max 2 h
+OFFLINE = (60.0, 15 * 60.0)  # no connection: 1 min, doubling, max 15 min, then the same name again
+IDLE = 300.0  # every name has a fresh result: look again in 5 minutes
 SLOW_DOWN = (ig_errors.PleaseWaitFewMinutes, ig_errors.RateLimitError, ig_errors.ClientThrottledError)
-NOT_AN_ANSWER = (*SLOW_DOWN, ig_errors.ClientConnectionError, ig_errors.ClientRequestTimeout)
+NO_ANSWER = (
+    ig_errors.ClientConnectionError,
+    ig_errors.ClientRequestTimeout,
+    ig_errors.ClientIncompleteReadError,
+    ig_errors.ClientJSONDecodeError,
+)
+STOP_NOW = (
+    ig_errors.ChallengeError,
+    ig_errors.LoginRequired,
+    ig_errors.ClientLoginRequired,
+    ig_errors.ReloginAttemptExceeded,
+    ig_errors.FeedbackRequired,
+    ig_errors.AccountSuspended,
+    ig_errors.ClientUnauthorizedError,
+    ig_errors.ClientForbiddenError,
+)
+HELD_WORDS = (
+    "isn't available",
+    "is not available",
+    "not available",
+    "already taken",
+    "is taken",
+    "another account",
+)
+INVALID_WORDS = ("can only use", "not allowed", "invalid", "can't contain", "cannot contain", "only numbers")
+LIMIT_WORDS = ("too many", "try again later", "14 days", "change your username", "limit")
+SECRET = re.compile(
+    r"(sessionid|csrftoken|ds_user_id|authorization|bearer|password|token|ig-u-[\w-]+)(\W{1,4})[^\s,;\"'}&]+",
+    re.I,
+)
+
+TOKEN = re.compile(r"(bearer\s+|igt:\d+:)[^\s,;\"'}&]+", re.I)
 
 
-def words(n: int) -> list[str]:
-    return WORDS[n].split()
+def redact(text) -> str:
+    """No session cookies, tokens or passwords in logs, the dashboard or exports."""
+    return SECRET.sub(r"\1\2[hidden]", TOKEN.sub(r"\1[hidden]", str(text)))
 
 
-def combos(n: int) -> list[str]:
-    """Every n-character name that starts with a letter: letters only first, then with digits.
-    Shuffled with a fixed seed so the order is the same on every run (resume) but not a-b-c."""
-    letters, both = string.ascii_lowercase, string.ascii_lowercase + string.digits
-    names = [""]
-    for i in range(n):
-        names = [p + c for p in names for c in (letters if i == 0 else both)]
-    plain = [x for x in names if x.isalpha()]
-    mixed = [x for x in names if not x.isalpha()]
-    rng = random.Random(f"ig-ultimate-{n}")
-    rng.shuffle(plain)
-    rng.shuffle(mixed)
-    return plain + mixed
+def clean(text) -> str:
+    """Error text for logs: redacted, one line, short."""
+    return redact(text).replace("\n", " ")[:160]
 
 
-def queue(length: int | None = None, mine: list[str] = ()) -> list[str]:
-    """The whole hunt in order. `length` keeps one length only (6 means 6 or longer)."""
-    main = [*words(2), *combos(2), *words(3), *combos(3), *words(4), *words(5), *words(6)]
-    rare = [*words(4), *words(5), *words(6)]
-    if length:
-        keep = (lambda x: len(x) >= 6) if length >= 6 else (lambda x: len(x) == length)
-        main, rare = [x for x in main if keep(x)], [x for x in rare if keep(x)]
-    out, seen = [], set()
-
-    def add(name: str) -> None:
-        name = name.strip().lstrip("@").lower()
-        if name and name not in seen and OK_NAME.match(name):
-            seen.add(name)
-            out.append(name)
-
-    for name in mine:  # your own ideas go first
-        add(name)
-    lane = iter(rare)
-    for i, name in enumerate(main):
-        if i % 3 == 2:
-            add(next((x for x in lane if x not in seen), ""))
-        add(name)
-    return out
+@dataclass
+class Answer:
+    status: str  # a huntdb.STATUSES key, or "accepted" (claim went through; must still be confirmed)
+    detail: str = ""
+    retry: bool = False  # no answer at all (offline): don't record anything, try the same name again
+    stop: str = ""  # the account needs attention: end the hunt with this message
 
 
-def state_file():
-    return paths.data_dir() / "username-finder.json"
+_LOCKS: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+_LOCKS_GUARD = threading.Lock()
 
 
-class Finder:
-    def __init__(
-        self,
-        cl,
-        log: Callable[[str], None],
-        stop: threading.Event,
-        me: str,
-        length: int | None = None,
-        mine: list[str] = (),
-        wait: Callable[[float], None] | None = None,
-    ):
-        self.cl, self.log, self.stop, self.me = cl, log, stop, me.lower()
-        self.wait = wait or stop.wait  # a pause that ends at once when you press Stop
-        self.names = queue(length, mine)
-        key = f"{length or 'all'}:{','.join(mine)}"
-        saved = paths.read_json(state_file(), {})
-        self.state = saved if saved.get("key") == key else {"key": key, "pos": 0, "round": 1, "held": []}
-        self.last_claim = -CLAIM_GAP
-        self.clock = 0.0  # seconds waited so far (keeps claim spacing testable without real time)
-        self.won = ""
+def client_lock(cl) -> threading.RLock:
+    """instagrapi keeps the last reply on the client (last_json), so two threads using one client at
+    once can read each other's answers. Every hunter call on a client goes through its one lock."""
+    with _LOCKS_GUARD:
+        if cl not in _LOCKS:
+            _LOCKS[cl] = threading.RLock()
+        return _LOCKS[cl]
 
-    def _pause(self, seconds: float) -> None:
-        self.clock += seconds
-        self.wait(seconds)
 
-    def _save(self) -> None:
-        paths.write_json(state_file(), self.state)
+def _stop_answer(exc) -> Answer:
+    return Answer("unknown", clean(exc), stop=explain(exc) or f"Instagram stopped us: {clean(exc)}")
 
-    def run(self) -> str:
-        """Hunts until a name is claimed (returns it) or you press Stop / Instagram objects (returns "")."""
-        self.log(
-            f"Hunting from name {self.state['pos'] + 1} of {len(self.names)} (round {self.state['round']}). "
-            "About 120 checks an hour."
-        )
-        backoff = BACKOFF[0]
-        while not self.stop.is_set():
-            if self.state["pos"] >= len(self.names):
-                self.state.update(
-                    pos=0, round=self.state["round"] + 1
-                )  # names free up as accounts get banned
-                self.log(f"Checked every name. Starting round {self.state['round']}.")
-            name = self.names[self.state["pos"]]
-            if name == self.me:  # already yours: no lookup, no pause
-                self.state["pos"] += 1
-                continue
-            try:
-                if self._try(name):
-                    return name
-                backoff = BACKOFF[0]
-            except SLOW_DOWN:
-                self.log(f"Instagram said slow down. Pausing {int(backoff // 60)} minutes, then carrying on.")
-                self._pause(backoff)
-                backoff = min(backoff * 2, BACKOFF[1])
-                continue  # same name again after the pause
-            except Exception as exc:  # noqa: BLE001
-                if why := explain(exc):
-                    self.log(why)
-                    return ""
-                self.log(f"Couldn't check {name}: {str(exc)[:100]}")
-            self.state["pos"] += 1
-            self._save()
-            self._pause(random.uniform(*LOOKUP_GAP))
-        self.log("Stopped. Next time it carries on where it left off.")
-        return ""
 
-    def _try(self, name: str) -> bool:
+class InstagrapiVerifier:
+    """The only verifier today. Replace it with one built on a documented, authorized integration if
+    Meta ever offers username checks; the Hunter only needs these four methods and flags."""
+
+    kind = "instagrapi"
+    official = False
+    can_lookup = True
+    can_claim = True  # through the same unofficial profile-edit call the app's other tools use
+    summary = (
+        "instagrapi: an unofficial client of Instagram's private app API, signed in as you. "
+        "Not a Meta-authorized integration. Meta's official API has no way to check or change a username."
+    )
+
+    def __init__(self, cl):
+        self.cl = cl
+        self.lock = client_lock(cl)
+
+    def account(self) -> tuple[str, str]:
+        """(numeric id, username) of the account this session is signed in to, read from Instagram."""
+        with self.lock:
+            a = self.cl.account_info()
+        return str(a.pk), str(a.username).lower()
+
+    def session_id(self) -> str:
+        """The signed-in account id from the session itself (no request)."""
+        return str(getattr(self.cl, "user_id", "") or "")
+
+    def lookup(self, name: str) -> Answer:
+        with self.lock:
+            return self._lookup(name)
+
+    def claim(self, name: str) -> Answer:
+        with self.lock:
+            return self._claim(name)
+
+    def _lookup(self, name: str) -> Answer:
         try:
-            self.cl.user_info_by_username_v1(name)
-            return False  # someone has it
+            user = self.cl.user_info_by_username_v1(name)
         except ig_errors.UserNotFound:
-            pass
-        gap = self.last_claim + CLAIM_GAP - self.clock
-        if gap > 0:
-            self._pause(gap)
-            if self.stop.is_set():
-                return False
-        self.last_claim = self.clock
-        self.log(f"@{name}: no account has it. Trying to claim it...")
+            return Answer("possibly_available", "No account has this name (not proof it's free).")
+        except SLOW_DOWN as exc:
+            return Answer("rate_limited", clean(exc))
+        except NO_ANSWER as exc:
+            return Answer("unknown", f"No answer from Instagram: {clean(exc)}", retry=True)
+        except STOP_NOW as exc:
+            return _stop_answer(exc)
+        except Exception as exc:  # noqa: BLE001 - an odd reply is "unknown", never "checked"
+            return Answer("unknown", f"Unexpected reply: {clean(exc)}")
+        got = str(getattr(user, "username", "") or "").lower()
+        if got and got != name:
+            return Answer("unknown", f"Instagram answered about a different account (@{got}).")
+        return Answer("taken")
+
+    def _claim(self, name: str) -> Answer:
         try:
             account = self.cl.account_edit(username=name)
+        except SLOW_DOWN as exc:
+            return Answer("rate_limited", clean(exc))
+        except NO_ANSWER as exc:
+            return Answer("unknown", f"No answer to the change: {clean(exc)}", retry=True)
+        except STOP_NOW as exc:
+            return _stop_answer(exc)
         except ig_errors.ClientError as exc:
-            if explain(exc) or isinstance(exc, NOT_AN_ANSWER):
-                self.last_claim = -CLAIM_GAP  # no answer about this name: retry it after the pause
-                raise
-            self.state["held"] = [*self.state["held"][-199:], name]
-            self.log(f"@{name} is held by Instagram (usually a banned or deactivated account). Moving on.")
+            msg = f"{exc} {getattr(exc, 'message', '')}".lower()
+            if any(w in msg for w in HELD_WORDS):
+                return Answer(
+                    "held", "Instagram refused it: usually kept from a banned or deactivated account."
+                )
+            if any(w in msg for w in INVALID_WORDS):
+                return Answer("invalid", clean(exc))
+            if any(w in msg for w in LIMIT_WORDS):
+                return Answer(
+                    "unknown",
+                    clean(exc),
+                    stop="Instagram won't let this account change its username right now (it limits "
+                    "changes, often to a few in 14 days). Try again in a few days.",
+                )
+            return Answer("unknown", f"Instagram refused the change without saying why: {clean(exc)}")
+        except Exception as exc:  # noqa: BLE001 - outcome unclear: the Hunter checks the account itself
+            return Answer("unknown", f"Unexpected reply: {clean(exc)}")
+        got = str(getattr(account, "username", "") or "").lower()
+        return Answer("accepted", "" if got == name else f"Instagram replied with @{got}.")
+
+
+class Presence:
+    """Is the dashboard still open? The page's heartbeat keeps this alive. After `timeout` seconds of
+    silence it is over for good: a heartbeat arriving later (say, after the laptop slept) does not bring
+    the hunt back; you press Start again. Wall-clock time, so a sleeping laptop counts as silence."""
+
+    GRACE = 5.0  # after a tab says goodbye: long enough for a page reload to check back in
+
+    def __init__(self, timeout: float = 30.0, clock: Callable[[], float] = time.time):
+        self.timeout, self.clock = max(5.0, float(timeout)), clock
+        self.lock = threading.Lock()
+        self.last = clock()
+        self.tabs: dict[str, float] = {}
+        self.expired = False
+
+    def beat(self, tab: str = "") -> bool:
+        with self.lock:
+            if self._check():
+                self.last = self.tabs[str(tab)[:40]] = self.clock()
+            return not self.expired
+
+    def bye(self, tab: str = "") -> None:
+        with self.lock:
+            self.tabs.pop(str(tab)[:40], None)
+            if not self._open_tabs():
+                self.last = min(self.last, self.clock() - self.timeout + self.GRACE)
+
+    def alive(self) -> bool:
+        with self.lock:
+            return self._check()
+
+    def _check(self) -> bool:
+        if not self.expired and self.clock() - self.last > self.timeout:
+            self.expired = True
+        return not self.expired
+
+    def _open_tabs(self) -> int:
+        now = self.clock()
+        return sum(now - t <= self.timeout for t in self.tabs.values())
+
+    def info(self) -> dict:
+        with self.lock:
+            alive = self._check()
+            return {"alive": alive, "tabs": self._open_tabs() if alive else 0, "timeout": self.timeout,
+                    "quiet_for": round(max(0.0, self.clock() - self.last), 1)}  # fmt: skip
+
+
+class Hunter:
+    """One hunt on one account. run() blocks (start it in a thread); pause/resume/stop are safe from any
+    thread. It never starts a lookup or a claim once stopped, paused or the dashboard is gone; an
+    operation already sent finishes and its outcome is written down."""
+
+    def __init__(
+        self,
+        verifier,
+        store,
+        account_id: str,
+        me: str,
+        *,
+        log: Callable[[str], None],
+        preset: str = "balanced",
+        min_len: int | None = None,
+        max_len: int | None = None,
+        langs=(),
+        auto_claim: dict | None = None,  # {"account_id", "username"} authorized for THIS session only
+        alive: Callable[[], bool] = lambda: True,
+        sleep: Callable[[float], object] | None = None,
+        clock: Callable[[], float] = time.monotonic,
+    ):
+        label, cats, _profile, lo, hi = names.PRESETS.get(preset, names.PRESETS["balanced"])
+        self.v, self.store, self.account_id, self.me = verifier, store, str(account_id), me.lower()
+        self.preset, self.cats, self.langs = (
+            preset if preset in names.PRESETS else "balanced",
+            cats,
+            tuple(langs),
+        )
+        self.min_len, self.max_len = int(min_len or lo), int(max_len or hi)
+        self.auto = auto_claim
+        if self.auto and (str(self.auto.get("account_id")) != self.account_id or not verifier.can_claim):
+            raise ValueError("Automatic claiming was authorized for a different account.")
+        self._log, self.alive, self.now = log, alive, clock
+        self.stop_event, self.paused = threading.Event(), threading.Event()
+        self.sleep = sleep or self.stop_event.wait
+        self.state, self.message, self.won = "ready", "", ""
+        self.checks, self.current, self.last = 0, "", {}
+        self.wait_until = 0.0
+        self.last_claim = -CLAIM_GAP
+
+    # -------------------------------------------------------------- controls
+    def pause(self):
+        self.paused.set()
+
+    def resume(self):
+        self.paused.clear()
+
+    def stop(self):
+        self.stop_event.set()
+
+    def log(self, text: str) -> None:
+        self._log(redact(text))
+
+    def info(self) -> dict:
+        return {
+            "state": "paused" if self.state == "running" and self.paused.is_set() else self.state,
+            "message": self.message,
+            "preset": self.preset,
+            "label": names.PRESETS[self.preset][0],
+            "min_len": self.min_len,
+            "max_len": self.max_len,
+            "langs": list(self.langs),
+            "auto_claim": bool(self.auto),
+            "checks": self.checks,
+            "current": self.current,
+            "last": self.last,
+            "waiting_for": round(max(0.0, self.wait_until - self.now())),
+            "won": self.won,
+        }
+
+    # -------------------------------------------------------------- waiting
+    def _go(self) -> bool:
+        """True when the next network action may start. Paused = idle here, no requests at all."""
+        while True:
+            if self.stop_event.is_set():
+                return False
+            if not self.alive():
+                self.state = "expired"
+                return False
+            if not self.paused.is_set():
+                return True
+            self.sleep(1.0)
+
+    def _pause(self, seconds: float) -> bool:
+        """Wait in short steps so Stop and a closed dashboard end it within about a second."""
+        self.wait_until = self.now() + seconds
+        while (left := self.wait_until - self.now()) > 0:
+            if self.stop_event.is_set() or not self.alive():
+                return False
+            self.sleep(min(1.0, left))
+        return True
+
+    # -------------------------------------------------------------- the hunt
+    def run(self) -> str:
+        """Hunts until a claim is confirmed (returns the name), or it is stopped, the dashboard goes
+        away, or Instagram needs attention (returns "")."""
+        self.state = "running"
+        try:
+            with self.store.hunting():
+                return self._run()
+        except huntdb.HuntBusy as exc:
+            self.state, self.message = "blocked", str(exc)
+            return ""
+        except Exception as exc:  # noqa: BLE001 - shown in the dashboard; progress is already saved
+            self.state, self.message = "error", f"The hunt stopped on an error: {clean(exc)}"
+            self.log(self.message)
+            return ""
+        finally:
+            if self.state == "running":
+                self.state = "expired" if not self.alive() else "stopped"
+            self.current = ""
+            self.log(
+                {
+                    "won": f"Done: your account is now @{self.won}.",
+                    "expired": "The dashboard closed, so the hunt stopped. "
+                    "Progress is saved: press Start to go on.",
+                    "stopped": "Stopped. Progress is saved: press Start to go on.",
+                }.get(self.state, self.message or "Stopped.")
+            )
+
+    def _run(self) -> str:
+        if won := self._recover():
+            return won
+        self.store.ensure(self.cats)
+        mode = "claims automatically (unofficial)" if self.auto else "finds names for you to claim"
+        self.log(
+            f"Hunting: {names.PRESETS[self.preset][0]}, {self.min_len}-{self.max_len} characters. It {mode}."
+        )
+        return self._loop()
+
+    def _loop(self) -> str:
+        lanes = itertools.cycle(self.cats)  # balanced = take turns between the styles
+        backoff, offline = BACKOFF[0], OFFLINE[0]
+        while self._go():
+            name = self._next(lanes)
+            if name is None:
+                self.message = "Every name has a fresh result. Looking again in 5 minutes."
+                self._pause(IDLE)
+                continue
+            self.current, self.message = name, ""
+            ans = self.v.lookup(name)
+            self.checks += 1
+            if ans.stop:
+                return self._blocked(ans.stop)
+            if ans.retry:  # offline: nothing learned about this name, so nothing is recorded
+                self.log(f"No connection to Instagram. Trying @{name} again in {int(offline)} s.")
+                self._pause(offline)
+                offline = min(offline * 2, OFFLINE[1])
+                continue
+            offline = OFFLINE[0]
+            if ans.status == "rate_limited":
+                self.store.mark(name, "rate_limited", ans.detail)
+                self.log(
+                    f"Instagram said slow down. Pausing {int(backoff // 60)} minutes, then @{name} again."
+                )
+                self._pause(backoff)
+                backoff = min(backoff * 2, BACKOFF[1])
+                continue
+            backoff = BACKOFF[0]
+            claim = ans.status == "possibly_available" and self.auto and not names.blocked(name)
+            # Recorded before anything else; a claim we then don't get to make is retried first next time.
+            self.store.mark(name, ans.status, ans.detail, soon=claim)
+            self.last = {"name": name, "status": ans.status}
+            if claim:
+                if self._claim(name):
+                    return name
+                if self.state != "running":
+                    return ""
+            elif ans.status == "possibly_available":
+                self.log(f"@{name}: no account has it. Claim it in the Instagram app (see Results).")
+            self._pause(random.uniform(*LOOKUP_GAP))
+        return ""
+
+    def _next(self, lanes) -> str | None:
+        for _ in self.cats:
+            cat = next(lanes)
+            if cat == "invented":
+                self.store.top_up()
+            name = self.store.pick([cat], self.min_len, self.max_len, self.langs, skip=[self.me])
+            if name:
+                return name
+        return None
+
+    def _blocked(self, why: str) -> str:
+        self.state, self.message = "blocked", why
+        return ""
+
+    def _confirm(self) -> tuple[str, str] | None:
+        try:
+            return self.v.account()
+        except Exception:  # noqa: BLE001 - "couldn't confirm" is handled by the caller
+            return None
+
+    def _claim(self, name: str) -> bool:
+        """Claim one name for the authorized account. Written down before it is sent, confirmed by
+        reading the account back afterwards: a 200 reply on its own is never taken as success."""
+        gap = self.last_claim + CLAIM_GAP - self.now()
+        if gap > 0 and not self._pause(gap):
+            return False  # stopped while waiting: the name keeps its old status and comes up first again
+        if not self._go():
             return False
-        if (getattr(account, "username", "") or "").lower() != name:
-            self.log(f"@{name}: Instagram didn't apply the change. Moving on.")
+        if (
+            self.v.session_id() not in ("", self.account_id)
+            or str(self.auto["account_id"]) != self.account_id
+        ):
+            self._blocked(
+                "You are signed in to a different account than the one you authorized. Nothing changed."
+            )
             return False
-        self.won = name
-        self.state["won"] = name
-        self._save()
+        self.store.mark(name, "claiming", f"claim sent for account {self.account_id}")
+        if self.stop_event.is_set() or not self.alive():  # Stop/close arrived while that was written
+            self.store.mark(name, "possibly_available", "claim not sent: the hunt stopped", soon=True)
+            return False
+        self.last_claim = self.now()
+        self.log(f"@{name}: no account has it. Trying to claim it...")
+        ans = self.v.claim(name)
+        seen = self._confirm()
+        if seen and seen[0] == self.account_id and seen[1] == name:
+            return self._won(name)
+        if seen is None:
+            self.store.mark(name, "unknown", "claim sent, but your account couldn't be read back")
+            self._blocked(
+                f"Couldn't confirm your username after trying @{name}. Check your profile, then start again."
+            )
+            return False
+        if ans.status == "accepted":
+            self.store.mark(
+                name, "failed_verification", f"Instagram accepted it but your account still shows @{seen[1]}"
+            )
+            self.log(f"@{name}: Instagram said yes, but your account still shows @{seen[1]}. Moving on.")
+        else:
+            self.store.mark(name, "unknown" if ans.retry else ans.status, ans.detail)
+            self.log(f"@{name}: {huntdb.STATUSES.get(ans.status, ans.status)}. {ans.detail}".strip())
+        self.last = {"name": name, "status": ans.status}
+        if ans.stop:
+            self._blocked(ans.stop)
+        elif ans.status == "rate_limited":
+            self._pause(BACKOFF[0])
+        return False
+
+    def _won(self, name: str) -> bool:
+        self.store.mark(name, "claimed", f"confirmed on account {self.account_id}")
+        self.won, self.state, self.last = name, "won", {"name": name, "status": "claimed"}
         self.log(f"GOT IT: your account is now @{name}. The hunt is over.")
         return True
+
+    def _recover(self) -> str:
+        """A claim that was sent but never recorded (crash, power cut, closed terminal): look at the
+        account to learn what really happened before doing anything else."""
+        pending = self.store.interrupted_claims()
+        if not pending:
+            return ""
+        seen = self._confirm()
+        if seen is None:
+            raise RuntimeError("an earlier claim was interrupted and your account couldn't be read")
+        for name in pending:
+            if seen[0] == self.account_id and seen[1] == name:
+                self.log(f"Your earlier claim of @{name} went through.")
+                self._won(name)
+                return name
+            self.store.mark(name, "unknown", f"claim was interrupted; your account is still @{seen[1]}")
+        self.log(f"An interrupted claim didn't go through; your account is still @{seen[1]}.")
+        return ""

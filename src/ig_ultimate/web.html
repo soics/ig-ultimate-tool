@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src 'self'; connect-src 'self'; img-src 'self' data:; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src 'self'; connect-src 'self'; worker-src blob:; img-src 'self' data:; form-action 'none'; base-uri 'none'">
 <meta name="igut-token" content="__TOKEN__">
 <title>IG Ultimate Tool</title>
 <style>
@@ -112,6 +112,25 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
 #review .btn { border-color: var(--cream); background: transparent; color: var(--cream); }
 #review .btn.solid { background: var(--cream); color: var(--black); }
 #review .count { font-variant-numeric: tabular-nums; color: #D2C8B6; }
+
+/* username finder */
+.htabs { display: flex; flex-wrap: wrap; gap: .3rem; margin: 0 0 1.2rem; border-bottom: 2px solid var(--line); }
+.htabs button { min-height: 44px; padding: .5rem .95rem; border: 0; border-radius: 12px 12px 0 0; background: transparent; cursor: pointer; font-weight: 700; }
+.htabs button[aria-selected="true"] { background: var(--ink); color: var(--cream); }
+.htabs button:hover:not([aria-selected="true"]) { background: rgba(22,19,16,.07); }
+#main { min-width: 0; }
+.scrollx { overflow-x: auto; }
+table.names { max-width: none; }
+table.names th { text-align: left; font-size: .85rem; color: var(--warm); padding: .3rem .5rem; }
+table.names td:last-child { white-space: nowrap; }
+button.link { border: 0; background: none; padding: 0; font-weight: 800; cursor: pointer; text-decoration: underline; text-decoration-color: var(--pink); text-underline-offset: 3px; }
+button.mini { min-height: 32px; min-width: 32px; padding: .2rem .55rem; margin-left: .25rem; border-radius: 999px; border: 1.5px solid var(--line); background: #fff; cursor: pointer; font-weight: 700; }
+button.mini:hover { border-color: var(--ink); }
+.explain { margin: .8rem 0; padding: 1.1rem; }
+.explain td:last-child { text-align: left; }
+.sbar { display: inline-block; width: 8rem; height: .5rem; border-radius: 99px; vertical-align: middle; background: linear-gradient(90deg, var(--pink) var(--v), var(--line) var(--v)); }
+fieldset.langs { border: 1px solid var(--line); border-radius: 14px; display: flex; flex-wrap: wrap; gap: 0 1rem; }
+@media (max-width: 800px) { table.names td:nth-child(3), table.names th:nth-child(3) { display: none; } }
 
 @media (prefers-reduced-motion: reduce) { .rcard, #loginCard, .tools button, #job .bar span { transition: none; } }
 </style>
@@ -438,24 +457,211 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
   }
 
   // ---------------------------------------------------------------- username finder
+  // The hunt only runs while this page is open. A heartbeat from a Web Worker (background tabs throttle
+  // normal timers, workers keep their pace) tells the app the page is still here; when it stops, the
+  // app stops the hunt by itself. pagehide is a best-effort "goodbye" on top, never relied on alone.
+  const TAB = Array.from(crypto.getRandomValues(new Uint32Array(2))).join("-");
+  const beatBody = (bye) => JSON.stringify({ tab: TAB, bye });
+  (function heartbeat() {
+    const src = "let t;onmessage=(e)=>{const c=e.data;clearInterval(t);const go=()=>fetch(c.url,{method:'POST',headers:{'X-Token':c.token,'Content-Type':'application/json'},body:c.body}).catch(()=>{});go();t=setInterval(go,c.every);};";
+    try {
+      const w = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+      w.postMessage({ url: location.origin + "/api/hunt/beat", token: T, body: beatBody(false), every: 5000 });
+    } catch { setInterval(() => api("/api/hunt/beat", { tab: TAB }).catch(() => {}), 5000); }
+    addEventListener("pagehide", () => fetch("/api/hunt/beat", { method: "POST", keepalive: true, headers: { "X-Token": T, "Content-Type": "application/json" }, body: beatBody(true) }).catch(() => {}));
+  })();
+
+  const H = { tab: "Hunter", preset: "balanced", min: "", max: "", langs: [], mode: "manual", ov: null, q: { q: "", status: "", favorites: false, excluded: false, offset: 0 }, at: 0 };
+  const HTABS = ["Hunter", "Discovery", "Generator", "Queue", "Results", "Security"];
+  const STATE = { ready: "Not started", running: "Hunting", paused: "Paused", stopped: "Stopped", expired: "Stopped: dashboard closed", won: "Got one", blocked: "Stopped: needs your attention", error: "Stopped: error" };
+  const presetOf = (k) => C.hunt_presets.find((p) => p.key === k) || C.hunt_presets[0];
+  const filters = () => ({ preset: H.preset, min_len: H.min || presetOf(H.preset).min, max_len: H.max || presetOf(H.preset).max, langs: H.langs });
+  const ago = (t) => t ? new Date(t * 1000).toLocaleString() : "";
+  const meaning = (r) => (r.info.senses || []).map((s) => (s.lang !== "en" ? s.lang + ": " : "") + s.meaning + (s.original ? ` (${s.original})` : "")).join("; ");
+  const btn = (text, onclick, cls = "btn ghost", extra = {}) => Object.assign(el("button", { type: "button", className: cls, textContent: text, ...extra }), { onclick });
+  async function overview(force) {
+    if (force || !H.ov || Date.now() - H.at > 4000) { H.ov = await api("/api/hunt/overview", {}); H.at = Date.now(); }
+    return H.ov;
+  }
+
   function drawHunt(m) {
-    const h = S.hunt;
-    const length = el("select", {}, ...[["", "Shortest first (2, 3, 4, 5, 6+)"], ["2", "Only 2 characters"], ["3", "Only 3 characters"], ["4", "Only 4 letters"], ["5", "Only 5 letters"], ["6", "Only 6 letters or more"]]
-      .map(([v, t]) => el("option", { value: v, textContent: t })));
-    const mine = el("textarea", { placeholder: "your own ideas, tried first (optional)" });
-    const user = el("input", { type: "text", placeholder: S.username });
+    const bar = el("div", { className: "htabs", role: "tablist", ariaLabel: "Username finder" });
+    const panel = el("div", { role: "tabpanel", id: "huntPanel" });
+    const tabs = HTABS.map((t, i) => {
+      const b = el("button", { type: "button", role: "tab", textContent: t, id: "htab-" + t, tabIndex: t === H.tab ? 0 : -1 });
+      b.setAttribute("aria-selected", t === H.tab);
+      b.onclick = () => { H.tab = t; drawHunt(m); $("htab-" + t).focus(); };
+      b.onkeydown = (e) => { const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); tabs[(i + d + tabs.length) % tabs.length].click(); } };
+      return b;
+    });
+    bar.append(...tabs);
+    panel.setAttribute("aria-labelledby", "htab-" + H.tab);
+    m.replaceChildren(el("h2", { textContent: "Username finder" }), bar, panel);
+    const draw = { Hunter: hHunter, Discovery: hDiscovery, Generator: hGenerator, Queue: hQueue, Results: hResults, Security: hSecurity }[H.tab];
+    panel.append(el("p", { className: "muted", textContent: "Loading..." }));
+    Promise.resolve(draw(panel)).catch((e) => say(panel, e.message, "err"));
+  }
+
+  function huntStatus() {
+    const h = S.hunt.hunter, s = S.hunt.session;
+    const rows = [["Status", h ? STATE[h.state] || h.state : STATE.ready]];
+    if (h) {
+      rows.push(["Style", `${h.label}, ${h.min_len}-${h.max_len} characters`], ["Claiming", h.auto_claim ? "Automatic (authorized for this hunt)" : "You claim it yourself"],
+        ["Names checked this hunt", String(h.checks)]);
+      if (h.current && S.hunt.running) rows.push(["Now", "@" + h.current + (h.waiting_for ? `, next step in ${h.waiting_for} s` : "")]);
+      if (h.last && h.last.name) rows.push(["Last result", `@${h.last.name}: ${C.hunt_statuses[h.last.status] || h.last.status}`]);
+    }
+    if (s) rows.push(["Dashboard", s.alive ? `connected (${s.tabs || 1} tab${s.tabs > 1 ? "s" : ""}); stops after ${s.timeout} s without this page` : "gone: the hunt was stopped"]);
+    const box = el("div", { id: "huntStatus" }, el("table", {}, ...rows.map(([a, b]) => el("tr", {}, el("td", { textContent: a }), el("td", { textContent: b })))));
+    if (h && h.message) box.append(el("p", { className: h.state === "running" ? "muted" : "warn", textContent: h.message }));
+    if (h && h.won) box.append(el("p", { className: "good", textContent: `Your account is now @${h.won}.` }));
+    return box;
+  }
+
+  async function hHunter(p) {
+    const h = S.hunt.hunter, running = S.hunt.running, paused = h && h.state === "paused";
     const msg = el("p", { role: "status" });
-    const start = el("button", { className: "btn", type: "button", textContent: "Start hunting", disabled: h.running });
-    const stop = el("button", { className: "btn ghost", type: "button", textContent: "Stop", disabled: !h.running });
-    start.onclick = async () => { try { await api("/api/hunt/start", { length: length.value, mine: mine.value, username: user.value }); await refresh(); drawMain(); } catch (e) { say(msg, e.message, "err"); } };
-    stop.onclick = () => api("/api/hunt/stop", {}).then(refresh).then(drawMain);
-    m.replaceChildren(el("h2", { textContent: "Username finder" }),
-      ...C.hunt_help.split("\n").map((t, i) => el("p", { className: i === 3 ? "warn" : "muted", textContent: t })),
-      el("label", { className: "field" }, "Which names", length),
-      el("label", { className: "field" }, "Your own ideas (optional)", mine),
-      el("label", { className: "field" }, `Type your username (${S.username}) to confirm it may be renamed`, user),
-      el("div", { className: "row" }, start, stop), msg,
-      el("pre", { className: "log", id: "huntLog", textContent: h.log.join("\n") || "Nothing yet." }));
+    const modes = [["manual", "Find names, I claim them myself in the Instagram app (recommended)"], ["auto", "Claim automatically (unofficial; renames my account)"]].map(([v, t]) => {
+      const r = el("input", { type: "radio", name: "hmode", value: v, checked: H.mode === v }); r.onchange = () => { H.mode = v; drawMain(); };
+      return el("label", { className: "check" }, r, t);
+    });
+    const ok = el("input", { type: "checkbox" }), user = el("input", { type: "text", placeholder: S.username, ariaLabel: "Your username" });
+    const auth = el("div", { className: "warn", hidden: H.mode !== "auto" },
+      el("p", { textContent: "Instagram has no official way to claim a username. This uses the same unofficial connection as the rest of this app. When a name goes through, your account is renamed straight away and your old username becomes free for anyone. Instagram also limits how often you can change it." }),
+      el("label", { className: "check" }, ok, `I authorize renaming @${S.username} automatically during this hunt only`),
+      el("label", { className: "field" }, `Type your username (${S.username})`, user));
+    const pr = presetOf(H.preset);
+    const start = btn("Start hunting", async () => {
+      try { await api("/api/hunt/start", { ...filters(), mode: H.mode, authorize: ok.checked, username: user.value }); await refresh(); drawMain(); }
+      catch (e) { say(msg, e.message, "err"); }
+    }, "btn", { disabled: running });
+    const ctl = (path) => () => api(path, {}).then(refresh).then(drawMain).catch((e) => say(msg, e.message, "err"));
+    p.replaceChildren(...C.hunt_help.split("\n").map((t, i) => el("p", { className: i === 3 ? "warn" : "muted", textContent: t })),
+      huntStatus(),
+      el("h3", { textContent: "Next hunt" }), el("p", { className: "muted", textContent: `${pr.label}, ${H.min || pr.min}-${H.max || pr.max} characters. Change it in Generator.` }),
+      ...modes, auth,
+      el("div", { className: "row" }, start, btn(paused ? "Resume" : "Pause", ctl(paused ? "/api/hunt/resume" : "/api/hunt/pause"), "btn ghost", { disabled: !running }), btn("Stop", ctl("/api/hunt/stop"), "btn ghost", { disabled: !running })), msg,
+      el("pre", { className: "log", id: "huntLog", textContent: S.hunt.log.join("\n") || "Nothing yet." }));
+  }
+
+  function nameRows(rows, after) {
+    if (!rows.length) return el("p", { className: "muted", textContent: "No names here." });
+    const t = el("table", { className: "names" }, el("tr", {}, ...["Name", "Score", "Style", "Meaning", "Status", ""].map((x) => el("th", { textContent: x, scope: "col" }))));
+    for (const r of rows) {
+      const why = el("button", { type: "button", className: "link", textContent: "@" + r.name, ariaLabel: `Why @${r.name} scores ${r.score}` });
+      why.onclick = () => explain(r.name, t);
+      const fb = (action, text, label) => btn(text, () => api("/api/hunt/feedback", { name: r.name, action }).then(after).catch(() => {}), "mini", { ariaLabel: `${label} @${r.name}` });
+      t.append(el("tr", {}, el("td", {}, why), el("td", { textContent: String(r.score + r.adj) }), el("td", { textContent: r.category }),
+        el("td", { textContent: meaning(r) || (r.info.source === "generated by IG Ultimate Tool" ? "invented / generated" : "") }), el("td", { textContent: r.label.split(" (")[0] }),
+        el("td", {}, r.favorite ? fb("unfavorite", "★", "Unstar") : fb("like", "☆", "Star"), r.excluded ? fb("include", "Show", "Show") : fb("dislike", "Hide", "Hide"))));
+    }
+    return el("div", { className: "scrollx" }, t);
+  }
+
+  async function explain(name, near) {
+    const x = await api("/api/hunt/explain", { name });
+    const i = x.info, box = el("div", { className: "card explain", role: "region", ariaLabel: `Score for @${name}` });
+    box.append(el("h3", { textContent: `@${name}: ${x.score} / 100 (${x.profile} profile)` }),
+      el("table", {}, ...x.parts.map((q) => el("tr", {}, el("td", { textContent: `${q.part} (weight ${q.weight})` }), el("td", {}, el("span", { className: "sbar", style: `--v:${q.value}%`, ariaHidden: "true" }), ` ${q.value}`)))),
+      el("p", { className: "muted", textContent: `Source: ${i.source} (${i.license}).` + (i.langs ? ` Languages: ${i.langs.join(", ")}.` : "") + (i.note ? ` Note: ${i.note}.` : "") + (i.ambiguous ? " More than one meaning." : "") }),
+      ...(i.senses || []).map((s) => el("p", { textContent: `${s.lang}: ${s.meaning}${s.original ? " (" + s.original + ")" : ""}` })),
+      ...Object.values(x.risks).map((r) => el("p", { className: "warn", textContent: r })),
+      ...(i.eligibility !== "ok" ? [el("p", { className: "warn", textContent: i.eligibility_note })] : []),
+      el("p", { className: "muted", textContent: x.note }), btn("Close", () => box.remove()));
+    near = near.closest(".scrollx") || near;
+    near.parentNode.querySelectorAll(".explain").forEach((n) => n.remove());
+    near.before(box);
+    box.querySelector("button").focus();
+  }
+
+  async function hDiscovery(p) {
+    const pr = presetOf(H.preset);
+    const draw = async () => {
+      const r = await api("/api/hunt/list", { ...filters(), status: "unchecked", limit: 40 });
+      p.replaceChildren(el("p", { className: "muted", textContent: `Best ${pr.label.toLowerCase()} names not checked yet (${r.total} in this style). Open a name to see its score. Star the ones you love (tried first), hide the ones you don't: it learns your taste.` }), nameRows(r.rows, draw));
+    };
+    p.replaceChildren(el("p", { className: "muted", textContent: "Preparing names. The first time can take a few seconds..." }));
+    await draw();
+  }
+
+  async function hGenerator(p) {
+    const preset = el("select", {}, ...C.hunt_presets.map((x) => el("option", { value: x.key, textContent: x.label, selected: x.key === H.preset })));
+    const min = el("input", { type: "number", min: 1, max: 30, value: H.min, placeholder: String(presetOf(H.preset).min) });
+    const max = el("input", { type: "number", min: 1, max: 30, value: H.max, placeholder: String(presetOf(H.preset).max) });
+    preset.onchange = () => { H.preset = preset.value; H.min = H.max = ""; drawMain(); };
+    min.onchange = () => (H.min = min.value); max.onchange = () => (H.max = max.value);
+    const langs = C.hunt_langs.map((l) => { const c = el("input", { type: "checkbox", checked: H.langs.includes(l) }); c.onchange = () => (H.langs = C.hunt_langs.filter((x, i) => langs[i][0].checked)); return [c, el("label", { className: "check" }, c, l)]; });
+    const mine = el("textarea", { placeholder: "@onyx, élan, kairo ..." });
+    const prio = el("select", {}, ...[["first", "Try these first"], ["score", "Mix them in by score"], ["last", "Try them last"]].map(([v, t]) => el("option", { value: v, textContent: t })));
+    const out = el("p", { role: "status" });
+    const add = btn("Add my names", async () => {
+      try { const r = await api("/api/hunt/custom", { names: mine.value, priority: prio.value }); mine.value = "";
+        say(out, `Added ${r.added.length}.` + (r.rejected.length ? ` Not valid usernames: ${r.rejected.join(", ")}.` : "") + (r.capped ? " Only the first 500 were taken." : ""), r.rejected.length ? "err" : "good"); }
+      catch (e) { say(out, e.message, "err"); }
+    }, "btn");
+    p.replaceChildren(el("label", { className: "field" }, "Style", preset), el("div", { className: "row" }, el("label", { className: "field" }, "Shortest", min), el("label", { className: "field" }, "Longest", max)),
+      el("p", { className: "muted", textContent: "3-6 characters is the sweet spot. 1-2 character names are kept in, but Instagram may not allow them any more: only a claim attempt can tell." }),
+      el("fieldset", { className: "langs", hidden: !["multi", "balanced"].includes(H.preset) }, el("legend", { textContent: "Languages (none ticked = all)" }), ...langs.map((x) => x[1])),
+      el("h3", { textContent: "Your own names" }), el("label", { className: "field" }, "Names (spaces or commas). Accents are removed: élan becomes elan.", mine), el("label", { className: "field" }, "When", prio), el("div", { className: "row" }, add), out);
+  }
+
+  async function hQueue(p) {
+    const ov = await overview(true), q = H.q;
+    const counts = el("table", {}, ...Object.entries(ov.counts).filter(([, n]) => n).map(([k, n]) => el("tr", {}, el("td", { textContent: C.hunt_statuses[k] || k }), el("td", { textContent: String(n) }))));
+    const search = el("input", { type: "text", value: q.q, placeholder: "search names or meanings", ariaLabel: "Search" });
+    const status = el("select", { ariaLabel: "Status" }, el("option", { value: "", textContent: "Any status" }), ...Object.entries(C.hunt_statuses).map(([k, t]) => el("option", { value: k, textContent: t, selected: q.status === k })));
+    const fav = el("input", { type: "checkbox", checked: q.favorites }), exc = el("input", { type: "checkbox", checked: q.excluded });
+    const list = el("div"), pager = el("div", { className: "row" });
+    const load = async () => {
+      Object.assign(q, { q: search.value, status: status.value, favorites: fav.checked, excluded: exc.checked });
+      const r = await api("/api/hunt/list", { ...filters(), ...q, limit: 50, sort: q.status ? "recent" : "score" });
+      list.replaceChildren(el("p", { className: "muted", textContent: `${r.total} names match.` }), nameRows(r.rows, load));
+      pager.replaceChildren(btn("Previous", () => { q.offset = Math.max(0, q.offset - 50); load(); }, "btn ghost", { disabled: !q.offset }), btn("Next", () => { q.offset += 50; load(); }, "btn ghost", { disabled: q.offset + 50 >= r.total }));
+    };
+    const go = () => { q.offset = 0; load().catch((e) => say(list, e.message, "err")); };
+    search.onchange = status.onchange = fav.onchange = exc.onchange = go;
+    const download = (fmt) => async () => {
+      const r = await api("/api/hunt/export", { ...filters(), ...q, format: fmt });
+      const a = el("a", { href: URL.createObjectURL(new Blob([r.content], { type: r.type })), download: r.filename }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    };
+    p.replaceChildren(el("h3", { textContent: "Everything so far" }), counts, el("h3", { textContent: `Browse: ${presetOf(H.preset).label}` }),
+      el("div", { className: "row" }, search, status), el("label", { className: "check" }, fav, "Starred only"), el("label", { className: "check" }, exc, "Hidden only"),
+      list, pager, el("div", { className: "row" }, btn("Export JSON", download("json")), btn("Export CSV", download("csv"))),
+      el("p", { className: "muted", textContent: "Exports hold the name list only: no account details, no login data." }));
+    go();
+  }
+
+  async function hResults(p) {
+    const ov = await overview(true);
+    const msg = el("p", { role: "status" });
+    const check = btn("I changed it in the app: check my account", async () => {
+      try { const r = await api("/api/hunt/verify", {}); say(msg, r.claimed ? `Confirmed: you are now @${r.username}. The hunt is over.` : `Your account is @${r.username}. It isn't one of the found names yet.`, r.claimed ? "good" : "muted"); await refresh(); H.ov = null; }
+      catch (e) { say(msg, e.message, "err"); }
+    }, "btn");
+    const found = ov.found.map((r) => el("li", {}, el("strong", { textContent: "@" + r.name }), ` (score ${r.score}, ${ago(r.checked_at)}) `,
+      btn("Copy", () => navigator.clipboard.writeText(r.name).then(() => say(msg, `Copied ${r.name}.`, "good")), "mini", { ariaLabel: `Copy ${r.name}` })));
+    p.replaceChildren(el("h3", { textContent: "Possibly available" }),
+      el("p", { className: "muted", textContent: "No account was found for these. That isn't proof: Instagram keeps names of banned and deactivated accounts. To claim one: copy it, open the Instagram app > Profile > Edit profile > Username, paste it and save. If Instagram accepts, come back and press the button below." }),
+      found.length ? el("ul", {}, ...found) : el("p", { className: "muted", textContent: "None yet." }),
+      el("div", { className: "row" }, check, el("a", { href: "https://www.instagram.com/accounts/edit/", target: "_blank", rel: "noopener noreferrer", textContent: "Open Instagram's Edit profile page" })), msg,
+      el("h3", { textContent: "Claimed" }), ov.claimed.length ? el("ul", {}, ...ov.claimed.map((r) => el("li", { textContent: `@${r.name}, ${ago(r.checked_at)}` }))) : el("p", { className: "muted", textContent: "Nothing yet." }),
+      el("h3", { textContent: "History" }), el("div", { className: "scrollx" }, el("table", { className: "names" }, ...ov.history.map((e) => el("tr", {}, el("td", { textContent: ago(e.at) }), el("td", { textContent: e.name ? "@" + e.name : "" }), el("td", { textContent: C.hunt_statuses[e.event] || e.event }), el("td", { textContent: e.detail }))))));
+  }
+
+  async function hSecurity(p) {
+    const ov = await overview(true), i = ov.integration, s = S.hunt.session;
+    const timeout = el("input", { type: "number", min: 10, max: 300, value: ov.timeout, ariaLabel: "Seconds" });
+    const msg = el("p", { role: "status" });
+    const save = btn("Save", () => api("/api/hunt/settings", { timeout: timeout.value }).then(() => { H.ov = null; say(msg, "Saved. It applies to the next hunt.", "good"); }).catch((e) => say(msg, e.message, "err")));
+    const rows = [["Account", `@${ov.account.username} (id ${ov.account.id_hint})`], ["Saved hunt", ov.account.file + " in this computer's app-data folder (owner-only)"],
+      ["Connection", i.official ? "Official Meta API" : "Unofficial (instagrapi)"], ["Checking names", i.lookup ? "Yes, by looking up the profile (unofficial)" : "Not available"],
+      ["Automatic claim", i.claim ? "Possible through the unofficial connection only; off unless you authorize it for one hunt" : "Not available"],
+      ["Authorized now", ov.authorized ? `Yes: @${ov.account.username}, this hunt only` : "No"],
+      ["Dashboard", s ? (s.alive ? `connected, ${s.tabs || 1} tab(s)` : "disconnected: hunt stopped") : "no hunt yet"]];
+    p.replaceChildren(el("table", {}, ...rows.map(([a, b]) => el("tr", {}, el("td", { textContent: a }), el("td", { textContent: b })))),
+      el("p", { className: "warn", textContent: i.summary }),
+      el("p", { className: "muted", textContent: "The hunt never runs without this page: it stops after the time below without a heartbeat, and never starts again by itself. Nothing is renamed unless you authorized it for the hunt that is running." }),
+      el("label", { className: "field" }, "Stop the hunt after this many seconds without the page (10-300)", timeout), el("div", { className: "row" }, save), msg);
   }
 
   // ---------------------------------------------------------------- settings
@@ -506,7 +712,8 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
     }
     const log = $("aiLog"); if (log) log.textContent = S.ai.log.join("\n") || "Nothing yet.";
     const hlog = $("huntLog"); if (hlog) hlog.textContent = S.hunt.log.join("\n") || "Nothing yet.";
-    if (logged && S.hunt.running !== huntWas) { huntWas = S.hunt.running; if (section === "Username finder") drawMain(); }  // it ended by itself: fix the buttons
+    const hs = $("huntStatus"); if (hs) hs.replaceWith(huntStatus());
+    if (logged && S.hunt.running !== huntWas) { huntWas = S.hunt.running; H.ov = null; if (section === "Username finder" && H.tab === "Hunter") drawMain(); }  // it ended by itself: fix the buttons
   }
   (async () => {
     C = await api("/api/catalog");

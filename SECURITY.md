@@ -10,6 +10,8 @@ All files live in your per-user app-data folder (not the download folder). The f
 | `settings.json` | Your choices: speed, keep-list, whitelist, AI settings (including the AI key you pasted) | Yes, it holds your AI key |
 | `runs/*.json` | Progress of interrupted runs (Instagram ids only) | No |
 | `lists/*.txt` | The last list each tool showed you | Usernames only |
+| `hunter/account-<id>.sqlite3` | The username finder's progress for one Instagram account: candidate names, their results, your stars and hides, and a history of checks and claims | No secrets (names and results only). Kept per account id so two accounts never mix |
+| `username-finder.v1-migrated.json` | The v1.2 finder progress, kept after it was imported | No |
 
 Your Instagram **password is never written anywhere.**
 
@@ -20,6 +22,14 @@ Your Instagram **password is never written anywhere.**
 - Photos and voice notes are downloaded into memory only from Instagram's own servers (`cdninstagram.com`, `fbcdn.net`), size-capped, and never saved to disk (except as temporary files for Claude Code / Codex, deleted right after).
 
 Nothing is sent to the authors. There is no telemetry.
+
+## Username finder safety rails
+
+- It runs only while the dashboard is open: the page sends a heartbeat every 5 seconds, and the app stops the hunt by itself after 30 seconds (adjustable 10-300) without one, or about 5 seconds after the last tab closes. A late heartbeat never restarts it.
+- It never renames your account unless you chose automatic claiming, ticked the authorization box and typed your username for that hunt. The authorization is kept in memory for that one hunt and account only.
+- Every claim is written down before it is sent and confirmed afterwards by reading your account back. If the result can't be confirmed, the hunt stops instead of trying another name.
+- Exports contain the name list only. Error text is scrubbed of cookies and tokens before it is logged.
+- Requests to the local server need the page's token, the right host name, and (for changes) this app's own origin.
 
 ## AI safety rails
 

@@ -84,3 +84,18 @@ def test_nuke_can_skip_steps(typed):
     typed += [",".join(skip), "yes", "you"]
     a.nuke()
     assert not a.cl._liked and a.cl._medias and a.cl._following
+
+
+def test_finder_in_the_terminal_claims_only_after_you_type_your_username(typed, monkeypatch):
+    from ig_ultimate import names, snipe
+
+    monkeypatch.setattr(snipe, "LOOKUP_GAP", (0, 0))
+    monkeypatch.setattr(snipe, "CLAIM_GAP", 0)
+    custom = str(list(names.PRESETS).index("custom") + 1)
+    a = app()
+    typed += [custom, "zen quill", "yes", "someone.else"]  # wrong username: nothing happens
+    a.finder()
+    assert a.cl._account.username == "you"
+    typed += [custom, "", "yes", "@you"]
+    a.finder()
+    assert a.cl._account.username == "quill" and a.cfg["username"] == "quill"
