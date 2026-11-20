@@ -42,24 +42,49 @@ def make(cl=None, auto=True, names=("zen", "quill"), first=("zen",), max_checks=
     return h, cl, store, clock, logs
 
 
-def test_held_name_is_recorded_and_the_free_one_is_claimed_and_confirmed():
+def test_held_name_is_skipped_for_good_and_the_free_one_is_claimed_at_once():
     h, cl, store, clock, logs = make()
     assert h.run() == "quill" and h.state == "won"
     assert cl._account.username == "quill"
     assert store.row("zen")["status"] == "held" and store.row("quill")["status"] == "claimed"
+    assert [c[1] for c in cl.calls if c[0] == "check_username"] == ["zen", "quill"]
+    assert len([c for c in cl.calls if c[0] == "account_edit"]) == 1  # no claim spent on the held one
+    assert clock.t <= snipe.LOOKUP_GAP[1]  # one lookup gap, no claim gap: claimed the moment it was found
     assert any("GOT IT" in s for s in logs)
-    assert clock.t >= snipe.CLAIM_GAP  # two claim attempts, spaced at least CLAIM_GAP apart
     events = [e["event"] for e in store.history(events=("claiming", "claimed", "held"))]
-    assert events == ["claimed", "claiming", "held", "claiming"]  # written down BEFORE each claim was sent
+    assert events == ["claimed", "claiming", "held"]  # written down BEFORE the claim was sent
+    assert store.pick(["custom"], now=huntdb.time.time() + 10**9) is None  # held never comes back
+
+
+def test_an_unclear_username_check_leaves_it_to_the_claim():
+    cl = FakeClient()
+    cl.check_username = lambda name: (_ for _ in ()).throw(ig_errors.ClientError("odd"))
+    h, cl, store, _, _ = make(cl)
+    assert h.run() == "quill" and store.row("zen")["status"] == "held"  # the claim itself said no
+
+
+def test_a_slow_down_from_the_username_check_never_stalls_the_hunt():
+    cl = FakeClient()
+    asked = []
+
+    def throttled(name):
+        asked.append(name)
+        raise ig_errors.ClientThrottledError("429 Client Error: for url: .../users/check_username/")
+
+    cl.check_username = throttled
+    h, cl, store, clock, _ = make(cl)
+    assert h.run() == "quill" and store.row("zen")["status"] == "held"  # the claims decided instead
+    assert asked == ["zen"]  # asked once, then left alone instead of hammering it
+    assert clock.t < snipe.BACKOFF[0]  # no 15-minute hunt pause over the check
 
 
 def test_manual_mode_never_touches_the_account():
     h, cl, store, _, logs = make(auto=False, max_checks=2)
     assert h.run() == "" and cl._account.username == "you"
     assert not [c for c in cl.calls if c[0] == "account_edit"]
-    assert store.row("quill")["status"] == "possibly_available"  # possibly, never "available"
-    assert store.row("zen")["status"] == "possibly_available"  # the lookup alone can't tell held from free
-    assert any("Claim it in the Instagram app" in s for s in logs)
+    assert store.row("quill")["status"] == "verified_available"  # Instagram's own check says free
+    assert store.row("zen")["status"] == "held"  # ...and tells a held name from a free one
+    assert any("FREE" in s and "Claim it now in the Instagram app" in s for s in logs)
 
 
 def test_auto_claim_is_bound_to_the_authorized_account():
@@ -263,7 +288,9 @@ def test_interrupted_claim_is_resolved_on_the_next_start():
 
 
 def test_stop_during_the_claim_gap_keeps_the_name_for_next_time():
-    h, cl, store, clock, _ = make(names=("zen", "quill"))
+    cl = FakeClient()
+    cl.check_username = lambda name: {}  # no clear answer: zen's claim is refused, so quill waits the gap
+    h, cl, store, clock, _ = make(cl, names=("zen", "quill"))
     real_sleep = h.sleep
 
     def stop_in_gap(s):
@@ -291,7 +318,7 @@ def test_closed_dashboard_ends_the_hunt_before_the_next_request():
     cl.user_info_by_username_v1 = lookup
     assert h.run() == "" and h.state == "expired" and sent == ["zen"]
     assert store.row("zen")["status"] == "possibly_available"  # the in-flight result is still recorded
-    assert not [c for c in cl.calls if c[0] == "account_edit"]  # but no claim after the page went away
+    assert not [c for c in cl.calls if c[0] in ("account_edit", "check_username")]  # nothing after it closed
     assert any("dashboard closed" in s for s in logs)
 
 

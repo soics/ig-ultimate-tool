@@ -3,12 +3,17 @@ and (only if you switched it on for this session) claims a free one for your acc
 
 Pipeline: names.py generates, validates and scores -> huntdb.Store dedupes, queues and remembers ->
 a Verifier asks Instagram -> the result is written down before anything else happens.
+When the lookup finds no account, Instagram's own username check (the one behind the Edit profile
+screen) is asked straight away: held names are skipped for good without spending a claim, and a
+name it calls free is claimed that same moment.
 
 What a result means:
 - "taken": an account has the name.
-- "possibly available": no account was found. That is NOT proof: Instagram keeps the names of banned,
-  deactivated and recently renamed accounts. Only Instagram accepting the change proves it.
-- "held": no account, but Instagram refused the change.
+- "possibly available": no account was found and Instagram's username check gave no clear answer.
+  That is NOT proof: Instagram keeps the names of banned, deactivated and recently renamed accounts.
+- "verified available": Instagram's username check says it is free. Still only a change that shows
+  on your account proves it.
+- "held": no account, but Instagram's check or the change itself said no. Never tried again.
 - "unknown" / "rate limited": no usable answer. The name is tried again later; it never counts as checked.
 
 Platform honesty: Meta's official Instagram API can read a username but has no way to check or change
@@ -45,13 +50,17 @@ EXPLAIN = (
     "It checks about 240 names an hour (480 on Fast, in Settings) and pauses by itself when Instagram "
     "says slow down. It keeps going as long as this page is open, all night if you like, and keeps the "
     "computer from sleeping by itself. Close the page and it stops within seconds, keeping its progress.\n"
-    "'No account has it' is not proof a name is free. By default you claim it yourself in the Instagram "
+    "When no account has a name, it asks Instagram's own username check: held names (kept from banned "
+    "or deactivated accounts) are skipped for good, and a name Instagram calls free is claimed that same "
+    "second if you switched automatic claiming on. Otherwise you claim it yourself in the Instagram "
     "app. Automatic claiming is unofficial (Instagram has no official way to do it), must be switched "
     "on each time, and RENAMES your account straight away: your old username becomes free for anyone."
 )
 LOOKUP_GAP = (10.0, 20.0)  # seconds between lookups: ~240 an hour; a "slow down" still backs off
 FAST_GAP = (5.0, 10.0)  # Settings > Speed: Fast. ~480 an hour: more "slow down" pauses are likely
-CLAIM_GAP = 180.0  # at most one username change attempt every 3 minutes
+# Live 2026-11-20: ~20 attempts 3 min apart went through; 1 min apart hit "Please wait a few minutes" after 4.
+CLAIM_GAP = 180.0  # at most one username change attempt every 3 minutes (only after a refused one)
+CHECK_OFF = 30 * 60.0  # the username check said "slow down": claim directly for 30 min instead
 CLAIM_REFUSED = 7 * 86400.0  # a change refused for a reason we don't recognise: not tried again for a week
 BACKOFF = (15 * 60.0, 2 * 3600.0)  # "too many requests": 15 min, doubling, max 2 h
 OFFLINE = (60.0, 15 * 60.0)  # no connection: 1 min, doubling, max 15 min, then the same name again
@@ -143,6 +152,7 @@ class InstagrapiVerifier:
     def __init__(self, cl):
         self.cl = cl
         self.lock = client_lock(cl)
+        self.check_off_until = 0.0  # the username check said "slow down": skipped until then
 
     def account(self) -> tuple[str, str]:
         """(numeric id, username) of the account this session is signed in to, read from Instagram."""
@@ -161,6 +171,35 @@ class InstagrapiVerifier:
     def claim(self, name: str) -> Answer:
         with self.lock:
             return self._claim(name)
+
+    def precheck(self, name: str) -> Answer | None:
+        """Instagram's own username check, for a name the lookup found no account for. It tells a
+        held name from a free one without spending a username change. None = no clear answer: the
+        claim itself decides, as before."""
+        if time.monotonic() < self.check_off_until:
+            return None
+        with self.lock:
+            try:
+                r = self.cl.check_username(name)
+            except SLOW_DOWN:
+                # Live 2026-11-20: this check got a 429 while lookups were fine. Don't stall the hunt:
+                # leave the check alone for a while and let the claim decide, as before.
+                self.check_off_until = time.monotonic() + CHECK_OFF
+                return None
+            except STOP_NOW as exc:
+                return _stop_answer(exc)
+            except Exception:  # noqa: BLE001 - unclear: fall back to the claim, never guess "held"
+                return None
+        if not isinstance(r, dict) or str(r.get("username", name)).lower() != name:
+            return None
+        if r.get("available") is True:
+            return Answer("verified_available", "Instagram's username check says it's free.")
+        if r.get("available") is False:
+            why = clean(r.get("error") or r.get("error_type") or "not available")
+            if any(w in why.lower() for w in INVALID_WORDS):
+                return Answer("invalid", why)
+            return Answer("held", f"Instagram's username check says no: {why}")
+        return None
 
     def _lookup(self, name: str) -> Answer:
         try:
@@ -417,6 +456,8 @@ class Hunter:
                 continue
             self.current, self.message = name, ""
             ans = self.v.lookup(name)
+            if ans.status == "possibly_available" and self._go() and (pre := self.v.precheck(name)):
+                ans = pre  # Instagram's own check: free, held, or "slow down"
             self.checks += 1
             if ans.stop:
                 return self._blocked(ans.stop)
@@ -435,7 +476,8 @@ class Hunter:
                 backoff = min(backoff * 2, BACKOFF[1])
                 continue
             backoff = BACKOFF[0]
-            claim = ans.status == "possibly_available" and self.auto and not names.blocked(name)
+            free = ans.status in ("possibly_available", "verified_available")
+            claim = free and self.auto and not names.blocked(name)
             # Recorded before anything else; a claim we then don't get to make is retried first next time.
             self.store.mark(name, ans.status, ans.detail, soon=claim)
             self.last = {"name": name, "status": ans.status}
@@ -444,8 +486,12 @@ class Hunter:
                     return name
                 if self.state != "running":
                     return ""
+            elif ans.status == "verified_available":
+                self.log(f"@{name}: FREE, Instagram's own check says so. Claim it now in the Instagram app.")
             elif ans.status == "possibly_available":
                 self.log(f"@{name}: no account has it. Claim it in the Instagram app (see Results).")
+            elif ans.status == "held":
+                self.log(f"@{name}: held by Instagram. Skipped for good.")
             self._pause(random.uniform(*self.gap))
         return ""
 
@@ -491,7 +537,7 @@ class Hunter:
             self.store.mark(name, "possibly_available", "claim not sent: the hunt stopped", soon=True)
             return False
         self.last_claim = self.now()
-        self.log(f"@{name}: no account has it. Trying to claim it...")
+        self.log(f"@{name}: looks free. Claiming it now...")
         ans = self.v.claim(name)
         seen = self._confirm()
         if seen and seen[0] == self.account_id and seen[1] == name:

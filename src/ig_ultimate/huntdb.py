@@ -35,7 +35,7 @@ STATUSES = {
     "taken": "Taken (an account has it)",
     "possibly_available": "Possibly available (no account found; not proof)",
     "verified_available": "Verified available (Instagram itself confirmed it)",
-    "held": "Held by Instagram (refused when claimed)",
+    "held": "Held by Instagram (not free to claim; skipped for good)",
     "unknown": "Unknown (no clear answer)",
     "rate_limited": "Rate limited (Instagram said slow down)",
     "failed_verification": "Failed verification (change didn't show on the account)",
@@ -47,11 +47,12 @@ RECHECK = {
     "taken": 30 * DAY,
     "held": 14 * DAY,
     "possibly_available": 3 * DAY,
+    "verified_available": DAY,  # you claim it yourself: looked at again daily, so a lost name shows
     "unknown": 600.0,
     "rate_limited": 0.0,  # the hunter already waited out the backoff: same name again, first
     "failed_verification": 7 * DAY,
 }
-NEVER_PICK = ("invalid", "claiming", "claimed")
+NEVER_PICK = ("invalid", "held", "claiming", "claimed")  # held: Instagram keeps it, so never again
 FIELDS = (
     "name, category, tags, score, adj, info, status, attempts, checked_at, next_at, "
     "favorite, excluded, priority, note"
@@ -283,8 +284,8 @@ class Store:
             f"AND excluded=0 AND status NOT IN ({never}) "
             f"AND next_at <= ? {not_these} "
             "ORDER BY favorite DESC, priority DESC, "
-            "status IN ('rate_limited', 'unknown', 'possibly_available') DESC, "
-            "status = 'unchecked' DESC, "  # never-tried names before rechecks of taken/held ones
+            "status IN ('rate_limited', 'unknown', 'possibly_available', 'verified_available') DESC, "
+            "status = 'unchecked' DESC, "  # never-tried names before rechecks of taken ones
             "score + adj DESC, rowid LIMIT 1"
         )
         row = self._read(sql, [*args, *NEVER_PICK, now or time.time(), *skip])
