@@ -22,7 +22,7 @@ from importlib import resources
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
 
-from . import ai, chat, config, engine, paths, session, snipe, tools
+from . import ai, chat, config, engine, huntdb, names, paths, session, snipe, tools
 from .cli import NOTICE
 from .engine import Plan, Stopped
 
@@ -231,6 +231,20 @@ class JobUI:
         self.job["lines"].append(text)
 
 
+class _FastClock:
+    """Preview only: the hunter's waits pass 1000x faster, so the pretend hunt shows results quickly."""
+
+    def __init__(self, stop: threading.Event):
+        self.t, self.stop = 0.0, stop
+
+    def now(self) -> float:
+        return self.t
+
+    def sleep(self, seconds: float) -> None:
+        self.stop.wait(min(seconds / 1000, 0.05))
+        self.t += seconds
+
+
 class WebApp:
     def __init__(self, preview: bool = False):
         self.cfg = config.load()
@@ -250,8 +264,12 @@ class WebApp:
         self.last_seen = time.monotonic()  # the page checks in every second; see the nuke countdown
         self.ai_stop: threading.Event | None = None
         self.ai_log: deque[str] = deque(maxlen=200)
-        self.hunt_stop: threading.Event | None = None
+        self.hunter: snipe.Hunter | None = None
+        self.hunt_thread: threading.Thread | None = None
+        self.presence: snipe.Presence | None = None
         self.hunt_log: deque[str] = deque(maxlen=200)
+        self._acct: tuple[str, str] | None = None  # (numeric id, username) as Instagram reports it
+        self._store: huntdb.Store | None = None
         if preview:
             self.use_preview()
 
@@ -261,7 +279,7 @@ class WebApp:
             return "A job is running. Wait for it or press Stop."
         if self.ai_stop and not self.ai_stop.is_set():
             return "Auto-reply is running. Stop it first, so only one thing uses your account at a time."
-        if self.hunt_stop and not self.hunt_stop.is_set():
+        if self.hunting():
             return "The username finder is running. Stop it first, so only one thing uses your account."
         return ""
 
@@ -292,7 +310,9 @@ class WebApp:
                 "log": list(self.ai_log)[-60:],
             },
             "hunt": {
-                "running": bool(self.hunt_stop and not self.hunt_stop.is_set()),
+                "running": self.hunting(),
+                **({"hunter": self.hunter.info()} if self.hunter else {}),
+                **({"session": self.presence.info()} if self.presence else {}),
                 "log": list(self.hunt_log)[-60:],
             },
         }
@@ -319,6 +339,13 @@ class WebApp:
             "modes": chat.MODES,
             "notice": NOTICE,
             "hunt_help": snipe.EXPLAIN,
+            "hunt_presets": [
+                {"key": k, "label": label, "min": lo, "max": hi}
+                for k, (label, _c, _p, lo, hi) in names.PRESETS.items()
+            ],
+            "hunt_statuses": huntdb.STATUSES,
+            "hunt_langs": sorted({x for e in names.lexicon().values() for x in e["langs"]} - {"en"}),
+            "hunt_profiles": list(names.PROFILES),
         }
 
     def save(self):
@@ -333,6 +360,7 @@ class WebApp:
             raise ValueError("Log out of your real account first.")
         os.environ["IG_ULTIMATE_HOME"] = str(paths.data_dir() / "preview")
         self.preview, self.cl, self.username = True, FakeClient(), "you"
+        self._forget_account()
 
     def _leave_preview(self):
         """Back to the real account's folder, settings and normal pacing."""
@@ -343,6 +371,7 @@ class WebApp:
         else:
             os.environ["IG_ULTIMATE_HOME"] = self._real_home
         self.preview, self.cl, self.username = False, None, ""
+        self._forget_account()
         self.cfg = config.load()
 
     def start_login(self, username: str, password: str):
@@ -370,6 +399,7 @@ class WebApp:
                 self.cfg["username"] = getattr(cl, "username", "") or username or self.cfg.get("username", "")
                 self.save()
                 self.cl, self.username = cl, self.cfg["username"]
+                self._forget_account()
             except session.LoginFailed as exc:
                 self.login_error = str(exc)
             except queue.Empty:
@@ -387,6 +417,7 @@ class WebApp:
             return self._leave_preview()
         session.logout(self.cl)
         self.cl, self.username = None, ""
+        self._forget_account()
 
     # ------------------------------------------------------------ plans & jobs
     def build(self, tool: str, params: dict) -> dict:
@@ -611,33 +642,182 @@ class WebApp:
             self.ai_log.append("Auto-reply stopped.")
 
     # ------------------------------------------------------------ username finder
+    # Runs only while a dashboard tab is open: the page sends a heartbeat every few seconds and the
+    # hunt stops by itself when they stop coming (tab closed, browser quit, laptop asleep, crash).
+    def hunting(self) -> bool:
+        return bool(self.hunt_thread and self.hunt_thread.is_alive())
+
+    def _forget_account(self):
+        if self._store and not self.hunting():
+            self._store.close()
+        self._acct, self._store = None, None
+
+    def _account(self, fresh: bool = False) -> tuple[str, str]:
+        if fresh or self._acct is None:
+            self._acct = snipe.InstagrapiVerifier(self.cl).account()
+        return self._acct
+
+    def hunt_store(self) -> huntdb.Store:
+        account_id, _ = self._account()
+        if self._store is None or self._store.path != huntdb.db_path(account_id):
+            self._store = huntdb.Store(account_id)
+            for said in (self._store.repaired, self._store.migrate_v1()):
+                if said:
+                    self._hunt_log(said)
+        return self._store
+
+    def _hunt_log(self, text: str) -> None:
+        self.hunt_log.append(f"{time.strftime('%H:%M')}  {text}")
+
+    def _timeout(self) -> int:
+        return max(10, min(300, _int(self.cfg.get("hunt_timeout")) or 30))
+
+    @staticmethod
+    def _langs(body: dict) -> list[str]:
+        return [x for x in body.get("langs") or [] if isinstance(x, str) and x.isalpha()][:20]
+
     def hunt_start(self, body: dict):
+        preset = str(body.get("preset") or "balanced")
+        if preset not in names.PRESETS:
+            raise ValueError("Unknown name style.")
+        _l, _c, _p, lo, hi = names.PRESETS[preset]
+        lo = max(1, min(30, _int(body.get("min_len")) or lo))
+        hi = max(lo, min(30, _int(body.get("max_len")) or hi))
         with self.start_lock:
             if why := self.busy():
                 raise ValueError(why)
-            if str(body.get("username", "")).strip().lstrip("@") != self.username:
-                raise ValueError("Type your username to confirm your account may be renamed.")
-            raw = str(body.get("length", "")).strip()
-            length = int(raw) if raw in {"2", "3", "4", "5", "6"} else None
-            stop = threading.Event()
-            self.hunt_stop = stop
-            self.hunt_log.append("Username finder started.")
-            finder = snipe.Finder(
-                self.cl, self.hunt_log.append, stop, self.username, length, _names(body.get("mine"))
-            )
+            account_id, me = self._account(fresh=True)  # the account as Instagram sees it right now
+            grant = None
+            if body.get("mode") == "auto":
+                typed = str(body.get("username", "")).strip().lstrip("@").lower()
+                if body.get("authorize") is not True or typed != me:
+                    raise ValueError(f"To claim automatically, tick the box and type your username ({me}).")
+                grant = {
+                    "account_id": account_id,
+                    "username": me,
+                    "granted_at": time.time(),
+                }  # this hunt only
+            presence = snipe.Presence(self._timeout())
+            hunter = snipe.Hunter(
+                snipe.InstagrapiVerifier(self.cl), self.hunt_store(), account_id, me, log=self._hunt_log,
+                preset=preset, min_len=lo, max_len=hi, langs=self._langs(body), auto_claim=grant,
+                alive=presence.alive,
+            )  # fmt: skip
+            if self.preview:  # the pretend account: waits pass a thousand times faster
+                fast = _FastClock(hunter.stop_event)
+                hunter.sleep, hunter.now = fast.sleep, fast.now
+            self.presence, self.hunter = presence, hunter
 
             def work():
-                if won := finder.run():
-                    self.username = won
-                    self.cfg["username"] = won
+                if won := hunter.run():
+                    self.username = self.cfg["username"] = won
+                    self._acct = (account_id, won)
                     self.save()
-                stop.set()
 
-            threading.Thread(target=work, daemon=True).start()
+            self.hunt_thread = threading.Thread(target=work, daemon=True, name="username-hunter")
+            self.hunt_thread.start()
 
-    def hunt_stop_now(self):
-        if self.hunt_stop and not self.hunt_stop.is_set():
-            self.hunt_stop.set()
+    def hunt_stop_now(self, wait: float = 0.0):
+        if self.hunter:
+            self.hunter.stop()
+        if wait and self.hunt_thread:
+            self.hunt_thread.join(wait)  # a request already sent finishes and is written down
+
+    def hunt_beat(self, body: dict) -> dict:
+        if not self.presence:
+            return {"alive": False}
+        tab = str(body.get("tab", ""))[:40]
+        if body.get("bye"):
+            self.presence.bye(tab)
+            return {"alive": self.presence.alive()}
+        return {"alive": self.presence.beat(tab)}
+
+    def hunt_control(self, action: str):
+        if not self.hunter or not self.hunting():
+            raise ValueError("The username finder isn't running.")
+        (self.hunter.pause if action == "pause" else self.hunter.resume)()
+
+    def hunt_overview(self) -> dict:
+        """What the Username finder page shows, apart from the long lists."""
+        store = self.hunt_store()
+        account_id, me = self._account()
+        v = snipe.InstagrapiVerifier
+        return {
+            "counts": store.counts(),
+            "account": {"username": me, "id_hint": f"...{account_id[-4:]}", "file": store.path.name},
+            "integration": {
+                "kind": v.kind,
+                "official": v.official,
+                "lookup": v.can_lookup,
+                "claim": v.can_claim,
+                "summary": v.summary,
+            },  # fmt: skip
+            "authorized": bool(self.hunter and self.hunter.auto and self.hunting()),
+            "timeout": self._timeout(),
+            "found": store.query(status="possibly_available", sort="recent", limit=30)["rows"],
+            "claimed": store.query(status="claimed", sort="recent", limit=10)["rows"],
+            "history": store.history(limit=80),
+        }
+
+    def _filters(self, body: dict) -> dict:
+        preset = str(body.get("preset") or "")
+        status = str(body.get("status") or "")
+        return {
+            "cats": list(names.PRESETS[preset][1]) if preset in names.PRESETS else [],
+            "min_len": max(1, min(30, _int(body.get("min_len")) or 1)),
+            "max_len": max(1, min(30, _int(body.get("max_len")) or 30)),
+            "langs": self._langs(body),
+            "q": str(body.get("q") or "")[:40],
+            "status": status if status in huntdb.STATUSES else "",
+            "fav": True if body.get("favorites") else None,
+            "excl": True if body.get("excluded") else False,
+        }
+
+    def hunt_list(self, body: dict) -> dict:
+        store, f = self.hunt_store(), self._filters(body)
+        store.ensure(f["cats"])
+        limit, offset = min(200, _int(body.get("limit")) or 50), _int(body.get("offset")) or 0
+        return store.query(sort=str(body.get("sort") or "score"), limit=limit, offset=offset, **f)
+
+    def hunt_explain(self, body: dict) -> dict:
+        name = names.normalize(str(body.get("name") or ""))[:30]
+        row = self.hunt_store().row(name)
+        profile = str(body.get("profile") or "")
+        if profile not in names.PROFILES:
+            profile = row["category"] if row and row["category"] in names.PROFILES else "balanced"
+        return {**names.explain(name, profile), "info": names.describe(name), "row": row}
+
+    def hunt_feedback(self, body: dict):
+        self.hunt_store().feedback(names.normalize(str(body.get("name") or "")), str(body.get("action")))
+
+    def hunt_custom(self, body: dict) -> dict:
+        raw = body.get("names")
+        items = _names(raw) if isinstance(raw, str) else [str(x) for x in (raw or [])]
+        priority = {"first": 1, "score": 0, "last": -1}.get(str(body.get("priority")), 1)
+        return self.hunt_store().add_custom(items, priority)
+
+    def hunt_export(self, body: dict) -> dict:
+        fmt = "csv" if body.get("format") == "csv" else "json"
+        content = self.hunt_store().export(fmt, **{**self._filters(body), "excl": None})
+        return {"filename": f"username-candidates.{fmt}", "type": f"text/{fmt}", "content": content}
+
+    def hunt_verify(self) -> dict:
+        """You changed your username yourself in the Instagram app: read the account to confirm it."""
+        old = self._account()[1]
+        _id, now = self._account(fresh=True)
+        store = self.hunt_store()
+        claimed = now != old and store.row(now) is not None
+        if claimed:
+            store.mark(now, "claimed", "confirmed on your account after you changed it in the app")
+            self.hunt_stop_now()
+            self._hunt_log(f"Confirmed: your account is now @{now}. The hunt is over.")
+        self.username = self.cfg["username"] = now
+        self.save()
+        return {"username": now, "claimed": claimed}
+
+    def hunt_settings(self, body: dict):
+        self.cfg["hunt_timeout"] = max(10, min(300, _int(body.get("timeout")) or 30))
+        self.save()
 
     # ------------------------------------------------------------ routing
     def post(self, path: str, body: dict):
@@ -672,6 +852,17 @@ class WebApp:
             "/api/ai/stop": lambda: self.ai_stop_now(),
             "/api/hunt/start": lambda: self.hunt_start(body),
             "/api/hunt/stop": lambda: self.hunt_stop_now(),
+            "/api/hunt/pause": lambda: self.hunt_control("pause"),
+            "/api/hunt/resume": lambda: self.hunt_control("resume"),
+            "/api/hunt/beat": lambda: self.hunt_beat(body),
+            "/api/hunt/overview": lambda: self.hunt_overview(),
+            "/api/hunt/list": lambda: self.hunt_list(body),
+            "/api/hunt/explain": lambda: self.hunt_explain(body),
+            "/api/hunt/feedback": lambda: self.hunt_feedback(body),
+            "/api/hunt/custom": lambda: self.hunt_custom(body),
+            "/api/hunt/export": lambda: self.hunt_export(body),
+            "/api/hunt/verify": lambda: self.hunt_verify(),
+            "/api/hunt/settings": lambda: self.hunt_settings(body),
         }
         if path not in routes:
             raise KeyError(path)
@@ -761,8 +952,14 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, app.catalog())
         return self._send(404, {"error": "not found"})
 
+    def _same_origin(self) -> bool:
+        """Browsers send Origin on POSTs: anything but this app's own page is refused, a second lock
+        (after the token) against other websites driving it."""
+        origin = self.headers.get("Origin")
+        return origin is None or origin.removeprefix("http://") in self.server.hosts  # type: ignore[attr-defined]
+
     def do_POST(self):
-        if not (self._allowed() and self._authed()):
+        if not (self._allowed() and self._authed() and self._same_origin()):
             return self._send(403, {"error": "forbidden"})
         if "application/json" not in self.headers.get("Content-Type", ""):
             return self._send(415, {"error": "JSON only"})
@@ -814,5 +1011,6 @@ def serve(preview: bool = False, open_browser: bool = True) -> int:
     finally:
         server.app.cancel.set()  # type: ignore[attr-defined]
         server.app.ai_stop_now()  # type: ignore[attr-defined]
+        server.app.hunt_stop_now(wait=10)  # type: ignore[attr-defined]  # a sent request gets recorded
         server.server_close()
     return 0

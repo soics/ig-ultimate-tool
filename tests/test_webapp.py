@@ -248,25 +248,137 @@ def test_custom_ai_key_never_follows_a_new_address(srv, monkeypatch):
     assert status == 400 and "https" in err["error"]
 
 
-def test_username_finder_needs_your_username_and_runs_alone(srv, monkeypatch):
+def hunt(srv, names="zen quill", **body):
     call(srv, "/api/preview", {})
-    monkeypatch.setattr(webapp.snipe, "LOOKUP_GAP", (0, 0))
-    monkeypatch.setattr(webapp.snipe, "CLAIM_GAP", 0)
-    status, body = call(srv, "/api/hunt/start", {"username": "someone.else"})
-    assert status == 400 and "confirm" in body["error"]
-    srv.app.cl.free_names, srv.app.cl.held_names = set(), set()  # nothing free: hunts until stopped
-    assert call(srv, "/api/hunt/start", {"username": "you", "length": "2"})[0] == 200
+    assert call(srv, "/api/hunt/custom", {"names": names, "priority": "first"})[0] == 200
+    return call(srv, "/api/hunt/start", {"preset": "custom", **body})
+
+
+def stopped(srv):
+    wait(lambda: not call(srv, "/api/state")[1]["hunt"]["running"])
+    return call(srv, "/api/state")[1]["hunt"]
+
+
+def test_auto_claim_needs_the_box_ticked_and_your_username(srv):
+    status, body = hunt(srv, mode="auto", authorize=True, username="someone.else")
+    assert status == 400 and "type your username (you)" in body["error"]
+    status, _ = hunt(srv, mode="auto", authorize="yes", username="you")  # only a real true counts
+    assert status == 400 and not srv.app.hunting()
+
+
+def test_username_finder_claims_confirms_and_shows_the_new_name(srv):
+    assert hunt(srv, mode="auto", authorize=True, username="@you")[0] == 200
+    h = stopped(srv)
+    state = call(srv, "/api/state")[1]
+    assert state["username"] == "quill" and h["hunter"]["state"] == "won"
+    assert any("GOT IT" in s for s in h["log"])
+    over = call(srv, "/api/hunt/overview", {})[1]
+    assert [r["name"] for r in over["claimed"]] == ["quill"]
+
+
+def test_manual_mode_finds_but_never_renames_and_runs_alone(srv):
+    assert hunt(srv)[0] == 200
     status, body = call(srv, "/api/ai/start", {})
     assert status == 400 and "username finder is running" in body["error"]
+    wait(lambda: call(srv, "/api/hunt/overview", {})[1]["counts"]["possibly_available"] == 2)
+    assert srv.app.cl._account.username == "you"
+    srv.app.cl._account.username = "quill"  # you claimed it yourself in the Instagram app
+    assert call(srv, "/api/hunt/verify", {})[1] == {"username": "quill", "claimed": True}
+    assert stopped(srv) and call(srv, "/api/state")[1]["username"] == "quill"
+
+
+def test_closing_the_dashboard_stops_the_hunt_and_a_late_heartbeat_cant_restart_it(srv):
+    assert hunt(srv, names="taken1 taken2")[0] == 200
+    assert call(srv, "/api/hunt/beat", {"tab": "a"})[1] == {"alive": True}
+    srv.app.presence.timeout = 0.4  # no heartbeat for this long = the page is gone
+    h = stopped(srv)
+    assert h["hunter"]["state"] == "expired" and any("dashboard closed" in s for s in h["log"])
+    assert call(srv, "/api/hunt/beat", {"tab": "a"})[1] == {"alive": False}
+    assert call(srv, "/api/plan", {"tool": "unlike", "params": {}})[0] == 200  # account free again
+
+
+def test_tab_goodbye_stops_soon_but_a_reload_keeps_hunting(srv, monkeypatch):
+    monkeypatch.setattr(webapp.snipe.Presence, "GRACE", 0.6)
+    assert hunt(srv, names="taken1 taken2")[0] == 200
+    call(srv, "/api/hunt/beat", {"tab": "a"})
+    srv.app.presence.timeout = 5
+    call(srv, "/api/hunt/beat", {"tab": "a", "bye": True})  # pagehide: closed, or reloading
+    call(srv, "/api/hunt/beat", {"tab": "b"})  # the reloaded page checks in
+    time.sleep(0.8)
+    assert srv.app.hunting()
+    call(srv, "/api/hunt/beat", {"tab": "b", "bye": True})  # closed for real
+    assert stopped(srv)["hunter"]["state"] == "expired"
+
+
+def test_pause_resume_stop_and_start_again_keeps_progress(srv):
+    assert hunt(srv, names="taken1 taken2 taken3")[0] == 200
+    assert call(srv, "/api/hunt/pause", {})[0] == 200
+    wait(lambda: call(srv, "/api/state")[1]["hunt"]["hunter"]["state"] == "paused")
+    assert call(srv, "/api/hunt/resume", {})[0] == 200
+    wait(lambda: call(srv, "/api/hunt/overview", {})[1]["counts"]["taken"] == 3)
     call(srv, "/api/hunt/stop", {})
-    wait(lambda: not call(srv, "/api/state")[1]["hunt"]["running"])
+    assert stopped(srv)["hunter"]["state"] == "stopped"
+    assert call(srv, "/api/hunt/pause", {})[0] == 400  # nothing to pause
+    assert call(srv, "/api/hunt/start", {"preset": "custom"})[0] == 200  # starts again, no restart by itself
+    assert call(srv, "/api/hunt/overview", {})[1]["counts"]["taken"] == 3  # nothing was forgotten
+    call(srv, "/api/hunt/stop", {})
+    stopped(srv)
 
 
-def test_username_finder_claims_and_shows_the_new_name(srv, monkeypatch):
+def test_other_websites_cant_post_even_with_the_token(srv):
+    port = srv.server_address[1]
+    req = urllib.request.Request(f"http://127.0.0.1:{port}/api/preview", data=b"{}", method="POST")
+    for origin, code in (("http://evil.example", 403), (f"http://127.0.0.1:{port}", 200)):
+        req.headers = {"X-token": srv.token, "Content-type": "application/json", "Origin": origin}
+        try:
+            with urllib.request.urlopen(req, timeout=5) as r:
+                assert r.status == code
+        except urllib.error.HTTPError as exc:
+            assert exc.code == code
+
+
+def test_discovery_queue_feedback_and_export(srv):
     call(srv, "/api/preview", {})
-    monkeypatch.setattr(webapp.snipe, "LOOKUP_GAP", (0, 0))
-    monkeypatch.setattr(webapp.snipe, "CLAIM_GAP", 0)
-    assert call(srv, "/api/hunt/start", {"username": "you", "mine": "@zen quill"})[0] == 200
-    wait(lambda: not call(srv, "/api/state")[1]["hunt"]["running"])
-    state = call(srv, "/api/state")[1]
-    assert state["username"] == "quill" and any("GOT IT" in s for s in state["hunt"]["log"])
+    out = call(srv, "/api/hunt/custom", {"names": "@Élan cœur bad!name lumen", "priority": "last"})[1]
+    assert out["added"] == ["elan", "coeur", "lumen"] and out["rejected"] == ["bad!name"]
+    rows = call(srv, "/api/hunt/list", {"preset": "custom"})[1]["rows"]
+    assert {r["name"] for r in rows} == {"elan", "coeur", "lumen"}
+    assert [r["score"] for r in rows] == sorted((r["score"] for r in rows), reverse=True)
+    why = call(srv, "/api/hunt/explain", {"name": "coeur"})[1]
+    assert why["info"]["senses"][0]["original"] == "cœur" and len(why["parts"]) == 9
+    assert call(srv, "/api/hunt/feedback", {"name": "lumen", "action": "dislike"})[0] == 200
+    assert "lumen" not in {r["name"] for r in call(srv, "/api/hunt/list", {"preset": "custom"})[1]["rows"]}
+    assert call(srv, "/api/hunt/feedback", {"name": "lumen", "action": "explode"})[0] == 400
+    assert call(srv, "/api/hunt/list", {"q": "%", "preset": "custom"})[1]["total"] == 0  # % is literal
+    for fmt in ("csv", "json"):
+        exp = call(srv, "/api/hunt/export", {"format": fmt, "preset": "custom"})[1]
+        assert "elan" in exp["content"] and "1000" not in exp["content"] and "you@" not in exp["content"]
+
+
+def test_each_account_has_its_own_hunt(srv):
+    call(srv, "/api/preview", {})
+    call(srv, "/api/hunt/custom", {"names": "quill"})
+    first = srv.app.hunt_store().path
+    srv.app.cl._account.pk = "2000"  # a different Instagram account
+    srv.app._forget_account()
+    assert srv.app.hunt_store().path != first
+    assert call(srv, "/api/hunt/list", {"preset": "custom"})[1]["total"] == 0
+    assert webapp.huntdb.db_path("2000").name == "account-2000.sqlite3"
+    with pytest.raises(ValueError):
+        webapp.huntdb.db_path("../../etc")
+
+
+def test_old_finder_progress_is_imported_once(srv):
+    call(srv, "/api/preview", {})
+    old = webapp.paths.data_dir() / "username-finder.json"
+    webapp.paths.write_json(old, {"key": "all:", "pos": 3, "round": 1, "held": ["zen"]})
+    over = call(srv, "/api/hunt/overview", {})[1]
+    assert over["counts"]["taken"] == 3 and over["counts"]["held"] == 1
+    assert not old.exists() and old.with_name("username-finder.v1-migrated.json").exists()
+    assert any("Imported your earlier hunt" in s for s in call(srv, "/api/state")[1]["hunt"]["log"])
+
+
+def test_logout_stops_the_hunt(srv):
+    assert hunt(srv, names="taken1 taken2")[0] == 200
+    call(srv, "/api/logout", {})
+    wait(lambda: not srv.app.hunting())

@@ -25,7 +25,7 @@ No modded Instagram app, no paying a social media manager, no giving your passwo
 | 🙍 **Profile** | Clear your bio, link and name · remove your profile picture · make the account private |
 | ☢️ **Nuke** | All of the above in a safe order, to get a brand-new-looking account. Two confirmations plus a 5-second countdown you can cancel |
 | 🤖 **AI auto-reply** | Answers DMs as you: **everyone**, only your **whitelist**, or only **usernames you paste**. Understands photos, memes, voice notes and reels. Free with Groq, or use Gemini, OpenRouter, Ollama, OpenAI, Claude, Claude Code or Codex |
-| 🔎 **Username finder** | Hunts for a free short or rare username (2-letter words, short combos like `pvp`, then uncommon words like `quantum`) at a human pace, claims the first one it gets for your account, then stops. Resumes where it left off. Most short names are taken, so it can take days or weeks |
+| 🔎 **Username finder** | Hunts for a rare, clean username: short and rare words, words from 18 languages, luxury and dark styles, invented names. Every name gets an explainable quality score, the best are checked first at a human pace, and you claim a free one yourself (or let it claim automatically, unofficial and opt-in). Runs only while the page is open, remembers everything per account. Most short names are taken, so it can take days |
 
 Everything that changes your account shows you the full list first, offers a **dry run**, and only starts after you type `yes`.
 
@@ -181,6 +181,17 @@ The same steps show in the app when you pick an AI. Open the one you chose:
 - **Claude Code** runs locked down: with no *Agent folder* it reads nothing; give it one folder and it can read only that.
 - **Codex** can read **every file your user account can**, whatever folder you pick. Only use it with people you trust completely.
 </details>
+
+## Username finder
+
+1. Open **Username finder** > **Generator** and pick a style (Ultra OG, short or rare words, multilingual, luxury, dark, invented, letters + numbers, balanced, or your own list). 3-6 characters is the default sweet spot.
+2. **Discovery** shows the best names not checked yet. Open one to see why it scored what it did. Star the ones you love (they're tried first), hide the ones you don't: the ranking learns your taste.
+3. **Hunter** > **Start hunting**. It checks about 120 names an hour and slows down by itself when Instagram asks.
+4. A name with no account shows up in **Results** as *possibly available*. That isn't proof (Instagram keeps names of banned accounts), so: copy it, change your username in the Instagram app, then press *I changed it: check my account*.
+
+**Automatic claiming** is there too, but Instagram has no official way to claim a username, so it uses the same unofficial connection as the rest of the app. It's off unless you tick the box and type your username for that hunt, it renames your account the moment a name goes through (your old one becomes free for anyone), and the hunt stops after a confirmed success.
+
+**It only hunts while the page is open.** Switching tabs or minimizing is fine. Close the page (or let the laptop sleep) and it stops within seconds, keeping its progress; press Start to go on. In the terminal version it hunts while that window is open and Ctrl+C stops it.
 
 ## Questions
 

@@ -392,42 +392,62 @@ class App:
 
     # ------------------------------------------------------------ username finder
     def finder(self) -> None:
+        """Terminal version: hunts while this window is open; Ctrl+C stops it and keeps the progress."""
         import threading
 
-        from . import snipe
+        from . import huntdb, names, snipe
 
         console.print(Panel(snipe.EXPLAIN, title="Username finder", border_style="#FF3D7F"))
-        raw = ask("Only one length? Type 2-6 (6 = 6 or longer), or press Enter for shortest first:")
-        length = int(raw) if raw in {"2", "3", "4", "5", "6"} else None
+        keys = list(names.PRESETS)
+        for i, k in enumerate(keys, 1):
+            console.print(f"  {i:>2}. {names.PRESETS[k][0]}")
+        raw = ask("Which style? Type a number, or press Enter for Balanced:")
+        preset = keys[int(raw) - 1] if raw.isdigit() and 1 <= int(raw) <= len(keys) else "balanced"
+        verifier = snipe.InstagrapiVerifier(self.cl)
+        account_id, me = verifier.account()
+        store = huntdb.Store(account_id)
+        for said in (store.repaired, store.migrate_v1()):
+            if said:
+                console.print(said)
         mine = ask("Your own ideas to try first (optional, separated by spaces):").replace(",", " ").split()
-        username = self.cl.account_info().username
+        if mine:
+            store.add_custom(mine, 1)
+        grant = None
         if (
-            ask(f"Type your username ([white]{username}[/]) to confirm it may be renamed:").lstrip("@")
-            != username
+            ask(
+                "Claim a free name automatically? (unofficial; renames your account) Type yes or press Enter:"
+            )
+            == "yes"
         ):
-            console.print("That doesn't match. Nothing changed.")
-            return
-        stop = threading.Event()
-        finder = snipe.Finder(
-            self.cl,
-            lambda s: console.print(f"  [dim]{time.strftime('%H:%M')}[/] {s}"),
-            stop,
-            username,
-            length,
-            mine,
+            if (
+                ask(f"Type your username ([white]{me}[/]) to confirm it may be renamed:").lstrip("@").lower()
+                != me
+            ):
+                console.print("That doesn't match. Nothing changed.")
+                return
+            grant = {"account_id": account_id, "username": me, "granted_at": time.time()}
+        hunter = snipe.Hunter(
+            verifier,
+            store,
+            account_id,
+            me,
+            log=lambda s: console.print(f"  [dim]{time.strftime('%H:%M')}[/] {s}"),
+            preset=preset,
+            auto_claim=grant,
         )
-        worker = threading.Thread(target=finder.run, daemon=True)
+        worker = threading.Thread(target=hunter.run, daemon=True)
         worker.start()
         console.print("[green]Hunting. Leave this window open. Press Ctrl+C to stop.[/]")
         try:
             while worker.is_alive():
                 worker.join(0.5)
         except KeyboardInterrupt:
-            stop.set()
-            worker.join(5)
-        if finder.won:
-            self.cfg["username"] = finder.won
+            hunter.stop()
+            worker.join(15)  # a request already sent finishes and is written down
+        if hunter.won:
+            self.cfg["username"] = hunter.won
             self.save()
+        store.close()
 
     # ------------------------------------------------------------ main loop
     def ai_menu(self):

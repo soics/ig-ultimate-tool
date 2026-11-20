@@ -1,0 +1,637 @@
+# IG Ultimate Tool name lexicon (offline, bundled).
+# Source: curated by the IG Ultimate Tool project from standard dictionary meanings.
+# No third-party word list is copied, so this file is MIT licensed like the project.
+# Investigated and NOT bundled: wordfreq (data is CC-BY-SA 4.0, share-alike) and CMUdict
+# (BSD-style, but only English pronunciations and ~3 MB). See design/username-hunter-v2.md.
+#
+# Format
+#   ## cats=a,b tier=c|u|r lang=xx     defaults for the lines below (tier: common, uncommon, rare)
+#   word word word                     ordinary words in that language (no gloss needed)
+#   word | meaning | original | note   one entry with a gloss; original spelling/script and an
+#                                      ambiguity note are optional. A meaning is only written when
+#                                      it is the standard dictionary sense.
+# Categories: short (3-4 letter words), premium (5-6), rare, multi, luxury, dark.
+
+## cats=short tier=c lang=en
+ace act air ale alt amp ape arc ark art ash awe axe bay bee bit boa bog bot bow box bud bug
+cab cam cap cob cog cow cub cue cup dab dew dim din dot dub dun dye eel elf elk elm emu era eve
+fad fan fax fez fig fin fir fix fly fob foe fog fox fry fur gem gig gnu goo gum gym hex hog hop
+hub hue hum ice icy ink inn ion ivy jab jam jar jaw jet jig jog joy jug keg key kin kit lab
+lag lap lax lid lit lob log lot map mew mix mob mod moo mud mug nab nap net nib nil nod
+nub nut oak oar oat odd ode ohm oil orb ore owl pad pal paw pea peg pew pod pop pry pug
+pun pup rad ram ray rib rig rim rot row rue rum rye sap saw sky sly sob sod soy spa spy sub
+sum tab tag tan tar tea tic tin tip toe ton tow toy tux urn van vat vex vim vow wax web wig wit
+wok wow yak yam yen yew yin zap zen zip zoo
+aloe alto arch aria atom aura avid axis axle bale balm bard bark barn bass beam bell bird blue
+blur boar bold bolt bone book boon brew brim buoy cafe calm cane cape cask cave cell chai char chef
+chic chip city clad clay clef coal coat coda coil coin cold colt comb cone cord core cork cove crag
+crow crux cube curl cusp dale dart dawn daze deck deer deft dell disc dock dome dove drip drum duke
+dune dusk dust east echo eddy edge epic etch fawn fern film fire fish flag flax flow flux foam folk
+font ford fork fort frog fume fuse gala gale gate gaze gild gilt glen glow gold gong gown grit gull
+gust hale halo hall harp hawk haze helm herb hero hive hood hook horn husk hymn icon inch iris iron
+isle jade jazz jest jive jolt keel keen kelp kiln king kite knit knot lace lake lamb lamp lane lark
+lava lens lily lime link lion loft loom loop lore lull lush lynx mage malt mane mast maze mead mesa
+mild mill mint mist moat mode monk mood moon moor moss moth muse myth neon nest node nook noon nova
+oath oboe onyx opal oryx oval pact page palm path peak pear pine plum poem poet pond pony pool port
+pure pyre quay raft rain reed reef rein rift rime ring road roam robe rock root rope rose ruby rune
+rush rust sage saga sail salt sand seal seed silk silt slab snow soar song soot soul spry star stem
+swan tale tarn teak teal thaw tide tile tome tone tree trio tuba tune tusk vale vane vase veil vein
+vibe vine void volt wade wand wane wasp wave west whim wick wild wind wing wish wisp wolf wood wool
+wren yarn yeti yoga yoke zeal zero zest zinc zing zone
+
+## cats=premium tier=c lang=en
+abbey acorn adore agate amber angel anvil arbor arrow ashen aspen aster atlas atoll attic azure
+badge banjo baron basil bayou beach berry birch bison blade blaze bliss bloom blush bower brave
+briar brine brook cabin cadet cairn cameo canal canoe canto caper cargo carol cedar cello chalk
+chaos charm chess chime chord cider cinch civic cliff cloud clove coast cobra cocoa comet coral
+crane crest crisp crown crypt cumin curio cycle daisy dance decor delta depth diary dingo ditto
+dogma dream drift druid eagle earth ebony elder ember envoy epoch ether fable fairy feast field
+fjord flair flame fleet flint flock flora flute focus forge forte frost froth fruit gamma gecko
+ghost giant glade glass gleam globe glory glyph gnome grace grail grain grand grove guild gusto
+haiku haven hazel heart helix heron honey house hydra ideal igloo image inlet ivory jewel jolly
+joust karma kayak koala lance latch lemon level lilac light linen llama lodge logic lotus lucid
+lunar lyric macaw magic magma mango manor maple marsh matte medal melon merit metal mirth mocha
+model motif motto mural music noble nomad north novel oasis ocean olive omega opera optic orbit
+otter oxide paint panda paper peach pearl pecan petal piano pilot pixel pixie plaza plume poise
+polar poppy pride prime prism pulse quail quark quest quiet quill quilt quirk radar raven realm
+regal relic rhino robin rogue royal runic sable saint salon satin scene scout sepia shade shell
+shire shore siren slate smile solar sonar sonic sound space spark spice spire squid stage steel
+stoic stone storm story sugar swift swirl sword synth tango tapir terra thorn thyme tiara tiger
+toast tonic topaz torch totem tower trail tribe trove tulip umbra unity valor vapor vault venom
+verge verse vigil vigor villa vinyl viola viper vista vital vivid voice waltz whale wheat whirl
+world xenon yacht youth zebra zesty
+aether amulet anchor archer arcade astral aurora autumn avenue bamboo banshee bazaar beacon billow
+bonsai breeze bridge bronze cactus candle candor canopy canyon castle cavern cherub cinder cipher
+circle citrus cobalt condor copper cosmic cosmos cotton coyote cradle cygnet cypher dagger dahlia
+damask dazzle desert dragon dynamo eclipse elixir enigma ermine falcon fathom fennel ferret flight
+floral flurry forest fossil frenzy fresco future galaxy gallop garden garnet geyser ginger glider
+glitch goblet golden gothic gravel harbor hearth helium herald hermit hollow indigo island jasper
+jigsaw jovial jungle kernel kettle kismet kitten knight lagoon lambda lancer lantern legend lichen
+linden luster lustre magnet mantle marble marina meadow mellow merlin meteor mirage mirror molten
+mosaic myriad mystic nebula nectar nimbus ocelot octane oracle orchid osprey oyster palace parlor
+pastel pebble pepper pewter phantom phoenix pillar planet plasma pollen portal prairie quartz
+quasar quiver rabbit ravine raptor reverie ribbon riddle ripple rocket sacred saddle safari saffron
+sailor salvo sapphire scarab sequin shogun sienna signal silver solace sonnet sphinx spiral sprite
+static statue stellar stream summit sunset tandem tavern temple thicket thistle thread throne
+thunder timber toucan travel trident truffle tundra turtle tuxedo unicorn utopia valley velour
+velvet verdant vertex vessel vintage violet vortex voyage walnut walrus wander willow winter
+wisdom wizard wombat yonder zealot zenith zephyr zigzag
+
+## cats=rare tier=r lang=en
+apricity | the warmth of the sun in winter (archaic)
+petrichor | the earthy smell after rain falls on dry ground
+halcyon | calm and peaceful; a mythical bird said to calm the sea
+gossamer | a fine, filmy cobweb; anything light and delicate
+susurrus | a soft murmuring or rustling sound
+nimbus | a luminous cloud or halo
+zephyr | a soft, gentle breeze
+aether | the clear upper air of the heavens (classical)
+elysian | blissful, heavenly
+liminal | relating to a threshold or a state of transition
+sylvan | of or relating to the woods
+vesper | evening; the evening star
+gloaming | twilight, dusk
+gloam | twilight (archaic)
+tenebrous | dark, shadowy
+umbral | relating to shadow
+caliginous | misty, dim, dark
+lambent | softly glowing or flickering
+effulgent | radiant, shining brightly
+aureate | golden; elaborately ornate
+argent | silver (heraldry)
+gules | red (heraldry)
+vert | green (heraldry)
+sigil | an inscribed or painted magical symbol
+ogham | the early Irish alphabet of notches and strokes
+quire | a set of folded sheets of paper; an old spelling of choir
+vellum | fine parchment made from calfskin
+codex | an ancient manuscript in book form
+folio | a single leaf of a book; a large book size
+palimpsest | a manuscript written over erased earlier writing
+scry | to see the future in a crystal ball or mirror
+augur | to foretell; a Roman official who read omens
+thane | a lord holding land from a king (Anglo-Saxon)
+liege | a feudal lord
+fealty | a sworn loyalty to a lord
+tabard | a herald's short tunic
+gyre | a spiral or vortex
+welkin | the sky, the heavens (archaic)
+empyrean | the highest heaven
+firmament | the vault of the heavens
+nadir | the lowest point
+apogee | the farthest point of an orbit from the Earth
+perigee | the nearest point of an orbit to the Earth
+syzygy | the alignment of three celestial bodies
+albedo | how much light a surface reflects
+aphelion | the point of an orbit farthest from the sun
+solstice | the longest or shortest day of the year
+equinox | when day and night are of equal length
+cirrus | a wispy, high cloud
+stratus | a low, grey layer of cloud
+virga | rain that evaporates before reaching the ground
+hoar | grey-white frost
+cwm | a steep-sided hollow at the head of a valley (Welsh origin)
+fell | a high, bare hill or moor (northern England)
+scree | loose stones covering a slope
+talus | rock debris at the base of a cliff
+karst | limestone landscape of caves and sinkholes
+butte | an isolated hill with steep sides and a flat top
+skerry | a small rocky island or reef
+holm | a small island in a river
+eyot | a small island in a river
+loam | rich, fertile soil
+moraine | rock and soil left behind by a glacier
+gneiss | a banded metamorphic rock
+basalt | a dark volcanic rock
+beryl | a mineral whose gem forms include emerald and aquamarine
+peridot | a green gemstone
+spinel | a hard gemstone mineral
+zircon | a gemstone mineral
+nacre | mother-of-pearl
+myrrh | a fragrant resin from a desert tree
+vetiver | a grass whose root oil is used in perfume
+oud | fragrant resinous agarwood, prized in perfume | | from Arabic; also a lute of the same name
+neroli | an oil distilled from bitter-orange blossom
+orris | iris root, used in perfume
+benzoin | a fragrant balsamic resin
+tonka | a fragrant bean used in perfume
+mace | a spice made from the covering of nutmeg | | also a medieval club
+cassia | a kind of cinnamon
+kestrel | a small falcon that hovers
+egret | a white heron
+ibis | a wading bird with a long curved bill
+plover | a short-billed wading bird
+curlew | a wading bird with a long curved bill
+corvid | a bird of the crow family
+serval | a long-legged African wild cat
+caracal | a wild cat with tufted ears
+marten | a small, agile forest mammal
+stoat | a small predator whose winter coat is ermine
+ibex | a wild mountain goat
+okapi | a forest animal related to the giraffe
+axolotl | a Mexican salamander that keeps its larval form
+narwhal | an Arctic whale with a long tusk
+nautilus | a sea creature with a spiral, chambered shell
+argonaut | an adventurer; a sailor of the Argo in Greek myth
+lethe | the river of forgetfulness in Greek myth
+styx | the river of the underworld in Greek myth
+acheron | a river of the underworld in Greek myth
+elysium | the paradise of heroes in Greek myth
+avalon | the legendary island of Arthurian legend
+arcadia | an idyllic pastoral paradise
+eldritch | weird, sinister and otherworldly
+arcane | understood by few; mysterious
+canto | a division of a long poem
+stanza | a group of lines in a poem
+nocturne | a dreamy musical piece evoking the night
+cadence | the rhythm and fall of a voice or a musical phrase
+adagio | slowly (music)
+largo | slowly and broadly (music)
+presto | very quickly (music)
+legato | smoothly, without breaks (music)
+vivace | lively (music)
+timbre | the character or quality of a sound
+fugue | a musical piece built on interwoven melodies
+motet | a short sacred choral piece
+psalm | a sacred song or hymn
+elegy | a mournful poem for the dead
+dirge | a lament for the dead
+requiem | a mass or music for the dead
+obelisk | a tall, four-sided stone pillar
+monolith | a single great stone
+cairn | a mound of stones built as a marker
+cupola | a small dome on a roof
+oriel | a projecting upper-floor window
+plinth | the base of a column or statue
+frieze | a decorated horizontal band on a wall
+loggia | a gallery open on one side
+atrium | an open central hall
+patina | the sheen that forms on old metal or wood
+verdigris | the green patina on copper
+ochre | an earthy yellow-brown pigment
+umber | a brown earth pigment
+gilt | a thin layer of gold
+filigree | delicate ornamental metalwork
+lacquer | a hard, glossy coating
+quill | a feather used as a pen
+lumen | a unit of light | | also Latin for light
+kismet | fate, destiny | | from Turkish, ultimately Arabic
+reverie | a daydream
+solace | comfort in sorrow
+ennui | listless boredom | | from French
+ardor | intense feeling; passion
+fervor | intense, passionate feeling
+mirth | amusement, laughter
+verve | energy and enthusiasm
+panache | flamboyant confidence of style
+aplomb | self-assurance in a difficult situation
+sangfroid | composure under pressure | | from French
+wraith | a ghost
+specter | a ghost or haunting presence
+revenant | one who returns from the dead
+banshee | a wailing spirit of Irish folklore
+selkie | a seal that can take human form (Scottish folklore)
+kelpie | a water spirit in the shape of a horse (Scottish folklore)
+sylph | an air spirit; a slender, graceful woman
+dryad | a tree nymph
+naiad | a water nymph
+nereid | a sea nymph
+chimera | a fire-breathing monster of Greek myth; an illusion
+griffin | a creature with an eagle's head and a lion's body
+wyvern | a two-legged winged dragon (heraldry)
+basilisk | a legendary serpent whose gaze could kill
+
+## cats=luxury tier=u lang=en
+atelier | an artist's or designer's workshop | | from French
+maison | a fashion house | | from French (house)
+couture | high-end made-to-measure fashion | | from French (sewing)
+couturier | a designer of high-end fashion | | from French
+bespoke | made to order
+velvet satin silk linen tweed lace chiffon organza tulle brocade damask cashmere mohair suede
+ivory pearl gilt onyx marble alabaster opal amber sable ermine cameo jade sepia sienna bronze
+brass copper gold vellum folio gallery salon studio muse icon chic regal noble grace poise allure
+aura opulent plush lavish baroque rococo deco nouveau atrium loggia portico plinth cornice arch
+vault dome spire column frieze mosaic fresco canvas easel sketch charcoal graphite palette hue
+tint tone ombre motif tailor seam pleat drape cuff gloss sheen lustre luster patina enamel
+lacquer gilded crest crown tiara signet heirloom jewel diamond emerald garnet sapphire topaz
+quartz crystal prism mirror chandelier velour satin taffeta muslin cotton seersucker
+apollo | Greek god of light, music and poetry
+athena | Greek goddess of wisdom and craft
+artemis | Greek goddess of the hunt and the moon
+hera | queen of the Greek gods
+iris | Greek goddess of the rainbow | | also a flower and part of the eye
+juno | queen of the Roman gods
+venus | Roman goddess of love; a planet
+orion | a hunter of Greek myth; a constellation
+atlas | the Titan who holds up the sky | | also a book of maps
+titan | one of the elder gods of Greek myth; a giant
+freya | Norse goddess of love and beauty
+odin | chief god of Norse myth
+loki | trickster god of Norse myth
+osiris | Egyptian god of the afterlife
+anubis | jackal-headed Egyptian god of the dead
+horus | falcon-headed Egyptian sky god
+selene | Greek goddess of the moon
+helios | Greek god of the sun
+hyperion | a Titan of heavenly light
+rhea | a Titan, mother of the Olympian gods
+psyche | the soul; a mortal loved by Eros in Greek myth
+minerva | Roman goddess of wisdom
+diana | Roman goddess of the hunt
+flora | Roman goddess of flowers; the plants of a region
+janus | two-faced Roman god of beginnings and doorways
+vesta | Roman goddess of the hearth
+ceres | Roman goddess of grain and harvest
+mercury | messenger god of Rome; a planet; a metal
+hermes | messenger god of Greek myth | | also a luxury brand: high impersonation risk
+nike | Greek goddess of victory | | also a sportswear brand: high impersonation risk
+
+## cats=dark tier=u lang=en
+ash ashen soot smoke ember cinder gloom gloam dusk umbra shade shadow void abyss crypt tomb grave
+raven crow rook wraith specter spectre phantom ghost hollow hush mute still silent onyx obsidian
+jet coal ink sable ebony night nocturne vesper eclipse wane wither thorn bone relic rune omen hex
+curse grim bleak stark mourn elegy dirge requiem vigil lantern candle wax fog mist haze murk mire
+moor fen bog marsh gothic vamp bat moth widow cypress yew nightshade belladonna hemlock wolfsbane
+lunar tide depth deep cold frost rime winter iron steel slate flint stone monolith obelisk sigil
+veil cloak hood mask silence solace dread haunt shroud pyre ruin cairn noir lich
+grimoire | a book of spells
+nyx | Greek goddess of the night
+erebus | primordial darkness in Greek myth
+hecate | Greek goddess of magic, crossroads and the night
+morrigan | Irish goddess of war and fate
+hel | Norse goddess and realm of the dead
+styx | the river of the underworld in Greek myth
+lethe | the river of forgetfulness in Greek myth
+
+## cats=multi tier=u lang=la
+lux | light
+nox | night
+lumen | light
+astra | stars
+vita | life
+anima | soul, breath
+terra | earth, land
+aqua | water
+ignis | fire
+ventus | wind
+caelum | sky, heaven
+sol | sun
+luna | moon
+stella | star
+nova | new (feminine) | | also an astronomical nova
+vox | voice
+pax | peace
+rex | king
+lex | law
+ars | art, skill
+amor | love
+fides | faith, trust
+spes | hope
+virtus | courage, virtue
+veritas | truth
+umbra | shadow
+aurum | gold
+argentum | silver
+ferrum | iron
+silva | forest
+mare | sea
+fortis | strong, brave
+audax | bold, daring
+velox | swift
+nihil | nothing
+omnis | all, every
+prima | first (feminine)
+ultima | last (feminine)
+magnus | great
+nexus | a binding, connection
+opus | work
+arcanum | a secret, a mystery
+ignotus | unknown
+regina | queen
+aurora | dawn
+somnus | sleep
+tempus | time
+corvus | raven
+lupus | wolf
+leo | lion
+ursa | she-bear
+aquila | eagle
+vulpes | fox
+draco | dragon
+serpens | serpent
+astrum | star
+alba | white (feminine) | | also dawn in Italian and Spanish
+
+## cats=multi tier=u lang=it
+bello | beautiful | | also Spanish
+bella | beautiful (feminine)
+luce | light
+notte | night
+sole | sun | | also an English fish and word for single
+cielo | sky | | also Spanish
+fiore | flower
+vento | wind
+fuoco | fire
+sogno | dream
+amore | love
+dolce | sweet
+alba | dawn
+sera | evening
+nero | black
+bianco | white
+rosso | red
+oro | gold | | also Spanish
+argento | silver
+forza | strength
+gioia | joy
+grazia | grace
+ombra | shadow
+brezza | breeze
+tesoro | treasure | | also Spanish
+nuvola | cloud
+tempesta | storm
+silenzio | silence
+volo | flight
+
+## cats=multi tier=u lang=fr
+luxe | luxury
+noir | black
+blanc | white
+rouge | red
+ciel | sky
+lune | moon
+soleil | sun
+reve | dream | rêve
+ame | soul | âme | also Japanese for rain
+belle | beautiful (feminine)
+douce | sweet, gentle (feminine)
+etoile | star | étoile
+nuit | night
+aube | dawn
+lumiere | light | lumière
+fleur | flower
+coeur | heart | cœur
+ombre | shadow
+brume | mist
+neige | snow
+vent | wind
+feu | fire
+argent | silver; money
+elan | flair, vigour | élan
+eclat | brilliance | éclat
+essor | soaring flight, rise
+jolie | pretty (feminine)
+sauvage | wild
+velours | velvet
+soie | silk
+ange | angel
+destin | destiny
+esprit | spirit, wit
+
+## cats=multi tier=u lang=es
+luz | light
+fuego | fire
+alma | soul | | also Portuguese
+vida | life | | also Portuguese
+sueno | dream | sueño
+noche | night
+estrella | star
+plata | silver
+lindo | pretty
+fuerte | strong
+viento | wind
+tierra | earth, land
+nube | cloud
+rayo | ray; lightning bolt
+lobo | wolf
+zorro | fox
+cuervo | raven
+paloma | dove
+brisa | breeze | | also Portuguese
+sombra | shadow
+nieve | snow
+tormenta | storm
+selva | jungle
+mar | sea | | also Portuguese
+
+## cats=multi tier=u lang=ja
+sora | sky | 空
+umi | sea | 海
+yama | mountain | 山
+kaze | wind | 風
+hana | flower | 花
+tsuki | moon | 月
+hoshi | star | 星
+yuki | snow | 雪
+mizu | water | 水
+hikari | light | 光
+kage | shadow | 影
+yume | dream | 夢
+kumo | cloud | 雲 | also 蜘蛛 spider
+mori | forest | 森
+kawa | river | 川
+sakura | cherry blossom | 桜
+kitsune | fox | 狐
+ookami | wolf | 狼
+tora | tiger | 虎
+ryu | dragon | 竜
+kuro | black | 黒
+shiro | white | 白 | also 城 castle
+aka | red | 赤
+ao | blue | 青
+kin | gold | 金 | also an English word for family
+gin | silver | 銀 | also an English spirit
+kokoro | heart, mind | 心
+inochi | life | 命
+mirai | the future | 未来
+nami | wave | 波
+hotaru | firefly | 蛍
+kiri | fog, mist | 霧
+tsubasa | wings | 翼
+honoo | flame | 炎
+ichi | one | 一
+
+## cats=multi tier=u lang=el
+eos | dawn; the Greek goddess of dawn | Ἠώς
+helios | sun | ἥλιος
+selene | moon | σελήνη
+gaia | earth | γαῖα
+kosmos | order; the world | κόσμος
+logos | word, reason | λόγος
+ethos | character | ἦθος
+pathos | suffering, emotion | πάθος
+kairos | the right, opportune moment | καιρός
+chronos | time | χρόνος
+arete | excellence, virtue | ἀρετή
+sophia | wisdom | σοφία
+agape | selfless love | ἀγάπη
+thalassa | sea | θάλασσα
+astron | star | ἄστρον
+aster | star | ἀστήρ | also an English flower
+phos | light | φῶς
+zoe | life | ζωή
+psyche | soul | ψυχή
+nous | mind, intellect | νοῦς
+metis | wisdom, cunning | μῆτις
+elpis | hope | ἐλπίς
+aion | an age; eternity | αἰών
+xenia | hospitality | ξενία
+mythos | story, myth | μῦθος
+
+## cats=multi tier=r lang=non
+skald | a poet | skáld
+norn | one of the goddesses of fate in Norse myth
+mani | the moon personified | Máni
+
+## cats=multi tier=r lang=is
+ljos | light | ljós
+haf | sea, ocean
+eldur | fire
+jokull | glacier | jökull
+hraun | lava field
+
+## cats=multi tier=u lang=sa
+karma | action and its consequences | कर्म
+dharma | duty, cosmic law | धर्म
+prana | breath, life force | प्राण
+veda | knowledge | वेद
+mantra | a sacred word or sound | मन्त्र
+surya | the sun | सूर्य
+chandra | the moon | चन्द्र
+agni | fire | अग्नि
+vayu | wind | वायु
+akasha | ether, space | आकाश
+ananda | bliss | आनन्द
+shanti | peace | शान्ति
+satya | truth | सत्य
+maya | illusion | माया | also a personal name and the Maya people
+nirvana | liberation from suffering | निर्वाण
+deva | a deity | देव
+tara | star | तारा | also a personal name
+amrita | the nectar of immortality | अमृत
+moksha | liberation | मोक्ष
+bodhi | awakening, enlightenment | बोधि
+
+## cats=multi tier=u lang=haw
+aloha | love, greeting, farewell
+mana | spiritual power
+nalu | wave
+lani | sky, heaven
+kai | sea | | also a personal name in many languages
+ola | life, health
+mele | song
+hoku | star | hōkū
+pua | flower
+
+## cats=multi tier=r lang=fi
+kuu | moon
+tuuli | wind
+meri | sea
+lumi | snow
+taika | magic
+sisu | grit, determination
+kaamos | the polar night
+usva | mist
+kuura | hoarfrost
+ilma | air; weather
+
+## cats=multi tier=r lang=ga
+anam | soul
+solas | light
+gra | love | grá
+ceol | music | ceol
+
+## cats=multi tier=r lang=cy
+hiraeth | longing for a home you can't return to
+cariad | love; darling
+draig | dragon
+seren | star
+haul | sun | | also an English verb
+awen | poetic inspiration
+mor | sea | môr
+
+## cats=multi tier=u lang=de
+licht | light
+nacht | night
+stern | star | | also an English word for strict
+wald | forest
+himmel | heaven, sky
+traum | dream
+seele | soul
+mond | moon
+sonne | sun
+zeit | time
+funke | spark
+nebel | fog, mist
+fernweh | longing for faraway places
+
+## cats=multi tier=u lang=pt
+saudade | a deep, longing nostalgia
+luar | moonlight
+ceu | sky, heaven | céu
+flor | flower | | also Spanish
+sonho | dream
+
+## cats=multi tier=u lang=sw
+jua | sun
+nyota | star
+upepo | wind
+moto | fire | | also a common short word for motorbike
+simba | lion
+amani | peace
+uhuru | freedom
+safari | a journey
+
+## cats=multi tier=r lang=ko
+byeol | star | 별
+haneul | sky | 하늘
+bada | sea | 바다
+baram | wind | 바람
+dal | moon | 달
+sarang | love | 사랑
+nabi | butterfly | 나비
+
+## cats=multi tier=u lang=ar
+noor | light | نور
+qamar | moon | قمر
+najm | star | نجم
