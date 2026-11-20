@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import getpass
 from collections.abc import Callable
 
@@ -33,9 +34,14 @@ def session_file():
     return paths.data_dir() / "session.json"
 
 
-def logout() -> None:
-    """Forget this computer's login. Your Instagram account itself is untouched."""
+def logout(cl=None) -> None:
+    """Forget this computer's login. Your Instagram account itself is untouched.
+    With a client, Instagram also ends this login, so a copied session.json stops working."""
+    if cl is not None:
+        with contextlib.suppress(Exception):  # offline or already expired: forgetting it locally is enough
+            cl.logout()
     session_file().unlink(missing_ok=True)
+    session_file().with_suffix(".corrupt").unlink(missing_ok=True)  # read_json keeps broken copies
 
 
 def login(

@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
 
+from . import engine
 from .engine import Item, Plan
 
 
@@ -267,3 +268,19 @@ NUKE_STEPS: list[tuple[str, str, Callable]] = [
         lambda cl, keep: plan_remove_followers(cl, "all", keep),
     ),
 ]
+
+
+def build_nuke(cl, keep: set[str], skip=()) -> tuple[list[Plan], list[tuple[str, str]]]:
+    """Count each step on its own: a read Instagram refuses skips that step, not the whole nuke.
+    Returns (plans, [(step label, why)]). Real pushback (rate limit, block, challenge) still stops all."""
+    plans, failed = [], []
+    for key, label, build in NUKE_STEPS:
+        if key in skip:
+            continue
+        try:
+            plans.append(build(cl, keep))
+        except Exception as exc:  # noqa: BLE001 - one unreadable step must not hide the others
+            if engine.explain(exc):
+                raise
+            failed.append((label, engine._short(exc)))
+    return plans, failed

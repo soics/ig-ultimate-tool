@@ -137,6 +137,9 @@ class FakeClient:
         self._settings["uuids"] = uuids or {}
         return True
 
+    def logout(self) -> bool:
+        return self._did("logout")
+
     def account_info(self):
         if self._settings.get("expired"):
             raise ig_errors.LoginRequired("expired")

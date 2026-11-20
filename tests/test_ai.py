@@ -99,3 +99,18 @@ def test_claude_uses_official_sdk_with_fallbacks(monkeypatch):
     )
     assert calls["beta"]["fallbacks"] == "default" and calls["beta"]["messages"][0]["role"] == "user"
     assert ai.reply({"provider": "anthropic", "key": "k", "model": "claude-haiku-5-5"}, "sys", turns) == "yo"
+
+
+def test_codex_gets_the_dm_on_stdin_never_on_the_command_line(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(ai.shutil, "which", lambda exe: f"/opt/{exe}.cmd")
+
+    def fake_run(cmd, **kw):
+        seen["cmd"], seen["input"] = cmd, kw.get("input")
+        return NS(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(ai.subprocess, "run", fake_run)
+    dm = 'hey" & calc & "'  # would break out of cmd.exe quoting if it were an argument
+    ai.reply({"provider": "codex"}, "rules", [{"role": "user", "text": dm, "images": []}])
+    assert seen["cmd"][0] == "/opt/codex.cmd" and seen["cmd"][-2:] == ["--", "-"]
+    assert not any(dm in arg for arg in seen["cmd"]) and dm in seen["input"]

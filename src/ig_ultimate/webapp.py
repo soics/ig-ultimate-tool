@@ -192,6 +192,7 @@ class WebApp:
         self.nuke_plans: list[Plan] = []
         self.job: dict | None = None
         self.cancel = threading.Event()
+        self.start_lock = threading.Lock()  # a double-click must not start two jobs on one account
         self.last_seen = time.monotonic()  # the page checks in every second; see the nuke countdown
         self.ai_stop: threading.Event | None = None
         self.ai_log: deque[str] = deque(maxlen=200)
@@ -274,8 +275,12 @@ class WebApp:
     def start_login(self, username: str, password: str):
         if self.logging_in:
             raise ValueError("Already logging in.")
+        if why := self.busy():
+            raise ValueError(why)
         self._leave_preview()
         self.logging_in, self.login_error = True, ""
+        while not self.answers.empty():  # a code typed for an earlier login must not be used for this one
+            self.answers.get_nowait()
 
         def ask(question: str) -> str:
             self.prompt = question
@@ -302,9 +307,11 @@ class WebApp:
         threading.Thread(target=work, daemon=True).start()
 
     def logout(self):
+        self.cancel.set()  # logging out stops whatever is still using the account
+        self.ai_stop_now()
         if self.preview:
             return self._leave_preview()
-        session.logout()
+        session.logout(self.cl)
         self.cl, self.username = None, ""
 
     # ------------------------------------------------------------ plans & jobs
@@ -336,8 +343,12 @@ class WebApp:
         self.cancel.wait(min(seconds, 0.05) if self.preview else seconds)
 
     def start_job(self, title: str, plans: list[Plan], dry: bool = False, countdown: int = 0):
-        if why := self.busy():
-            raise ValueError(why)
+        with self.start_lock:
+            if why := self.busy():
+                raise ValueError(why)
+            self._start_job(title, plans, dry, countdown)
+
+    def _start_job(self, title: str, plans: list[Plan], dry: bool, countdown: int):
         job = {
             "id": secrets.token_hex(4),
             "title": title,
@@ -407,12 +418,17 @@ class WebApp:
             raise ValueError(why)
         skip = set(body.get("skip") or [])
         keep = set(self.cfg.get("keep", {}))
-        self.nuke_plans = [build(self.cl, keep) for key, _l, build in tools.NUKE_STEPS if key not in skip]
+        self.nuke_plans, failed = tools.build_nuke(self.cl, keep, skip)
         self.username = self.cl.account_info().username
         rows = [
             {"title": p.title, "count": len(p.items), "experimental": p.experimental} for p in self.nuke_plans
         ]
-        return {"steps": rows, "total": sum(r["count"] for r in rows), "username": self.username}
+        return {
+            "steps": rows,
+            "total": sum(r["count"] for r in rows),
+            "failed": [{"title": t, "why": w} for t, w in failed],
+            "username": self.username,
+        }
 
     def nuke_run(self, body: dict):
         if not self.nuke_plans:
@@ -475,8 +491,12 @@ class WebApp:
         return said
 
     def ai_start(self, body: dict):
-        if why := self.busy():
-            raise ValueError(why)
+        with self.start_lock:
+            if why := self.busy():
+                raise ValueError(why)
+            self._ai_start(body)
+
+    def _ai_start(self, body: dict):
         a = chat.settings(self.cfg)
         if not a["provider"]:
             raise ValueError("Set up the AI first.")
@@ -515,6 +535,8 @@ class WebApp:
                 str(body.get("username", "")).strip().lstrip("@"), str(body.get("password", ""))
             )
         if path == "/api/answer":
+            if not self.prompt:
+                raise ValueError("Nothing is waiting for a code right now.")
             return self.answers.put(str(body.get("text", "")).strip())
         if path == "/api/preview":
             return self.use_preview()
@@ -634,6 +656,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(413, {"error": "too large"})
         try:
             body = json.loads(self.rfile.read(length) or b"{}")
+            if not isinstance(body, dict):
+                return self._send(400, {"error": "bad request"})
             result = self.server.app.post(urlparse(self.path).path, body)  # type: ignore[attr-defined]
             return self._send(200, result if isinstance(result, dict) else {"ok": True})
         except KeyError:

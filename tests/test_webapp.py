@@ -170,3 +170,42 @@ def test_only_one_thing_uses_the_account_at_a_time(srv, monkeypatch):
     assert status == 400 and "Auto-reply is running" in body["error"]
     call(srv, "/api/ai/stop", {})
     assert call(srv, "/api/plan", {"tool": "unlike", "params": {}})[0] == 200
+
+
+def test_double_click_starts_only_one_job(srv):
+    call(srv, "/api/preview", {})
+    plan = call(srv, "/api/plan", {"tool": "unfollow_not_back", "params": {}})[1]
+    check = srv.app.busy
+    srv.app.busy = lambda: (check(), time.sleep(0.3))[0]  # gap between "not busy" and starting
+    go = threading.Barrier(2)
+    codes = []
+
+    def click():
+        go.wait()
+        codes.append(call(srv, "/api/run", {"plan_id": plan["plan_id"], "confirm": "yes"})[0])
+
+    clicks = [threading.Thread(target=click) for _ in range(2)]
+    for t in clicks:
+        t.start()
+    for t in clicks:
+        t.join()
+    assert sorted(codes) == [200, 400]
+
+
+def test_logout_stops_everything_and_ends_the_instagram_login(srv, monkeypatch):
+    app = srv.app
+    call(srv, "/api/login", {"username": "you", "password": "pw"})
+    wait(lambda: app.cl is not None)
+    cl = app.cl
+    app.cfg["ai"] = {"provider": "groq", "mode": "whitelist", "whitelist": {"2000": "alex.nova"}}
+    monkeypatch.setattr(webapp.chat.Bot, "run", lambda self, stop: stop.wait(5))
+    assert call(srv, "/api/ai/start", {})[0] == 200
+    assert call(srv, "/api/logout", {})[0] == 200
+    assert app.ai_stop.is_set() and app.cancel.is_set()
+    assert ("logout",) in cl.calls and not session.session_file().exists()
+
+
+def test_stray_codes_and_odd_bodies_are_refused(srv):
+    assert call(srv, "/api/answer", {"text": "123456"})[0] == 400
+    assert srv.app.answers.empty()  # can't be picked up by the next login's code question
+    assert call(srv, "/api/preview", [1, 2])[0] == 400
