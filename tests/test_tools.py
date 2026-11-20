@@ -1,3 +1,6 @@
+import pytest
+from instagrapi.exceptions import ClientError, FeedbackRequired
+
 from ig_ultimate import tools
 from ig_ultimate.engine import execute
 from ig_ultimate.fake import FakeClient
@@ -62,3 +65,24 @@ def test_full_nuke_empties_the_account_except_keep_list(ui):
     assert not (cl._threads or cl._requests)
     assert set(cl._following) == keep and set(cl._followers) == keep
     assert all(m.comment_count == 0 for m in cl._medias)
+
+
+def test_nuke_skips_a_step_instagram_wont_read_but_stops_on_pushback():
+    cl = FakeClient()
+    sorry = "We're sorry, but something went wrong. Please try again."
+
+    def refuse(*a, **k):
+        raise ClientError(sorry)
+
+    cl.liked_medias = refuse
+    plans, failed = tools.build_nuke(cl, set(), skip={"posts"})
+    assert len(plans) == len(tools.NUKE_STEPS) - 2
+    assert {"unlike", "delete-posts"}.isdisjoint(p.job for p in plans)
+    assert failed == [("Unlike everything you ever liked", sorry)]
+
+    def blocked(*a, **k):
+        raise FeedbackRequired("feedback_required")
+
+    cl.liked_medias = blocked
+    with pytest.raises(FeedbackRequired):
+        tools.build_nuke(cl, set())

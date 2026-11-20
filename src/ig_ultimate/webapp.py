@@ -407,12 +407,17 @@ class WebApp:
             raise ValueError(why)
         skip = set(body.get("skip") or [])
         keep = set(self.cfg.get("keep", {}))
-        self.nuke_plans = [build(self.cl, keep) for key, _l, build in tools.NUKE_STEPS if key not in skip]
+        self.nuke_plans, failed = tools.build_nuke(self.cl, keep, skip)
         self.username = self.cl.account_info().username
         rows = [
             {"title": p.title, "count": len(p.items), "experimental": p.experimental} for p in self.nuke_plans
         ]
-        return {"steps": rows, "total": sum(r["count"] for r in rows), "username": self.username}
+        return {
+            "steps": rows,
+            "total": sum(r["count"] for r in rows),
+            "failed": [{"title": t, "why": w} for t, w in failed],
+            "username": self.username,
+        }
 
     def nuke_run(self, body: dict):
         if not self.nuke_plans:

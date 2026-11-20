@@ -348,7 +348,8 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
       try {
         const r = await api("/api/nuke/plan", { skip: checks.filter(([c]) => !c.checked).map(([c]) => c.dataset.key) });
         const table = el("table", {}, ...r.steps.map((s) => el("tr", {}, el("td", { textContent: s.title + (s.experimental ? " (experimental)" : "") }), el("td", { textContent: String(s.count) }))));
-        if (!r.total) { out.replaceChildren(el("p", { className: "good", textContent: "Your account is already empty." })); return; }
+        const skipped = r.failed.map((f) => el("p", { className: "warn", textContent: `Skipped: ${f.title}. Instagram wouldn't let us read it (${f.why}).` }));
+        if (!r.total) { out.replaceChildren(...skipped, el("p", { className: skipped.length ? "muted" : "good", textContent: skipped.length ? "Nothing else to delete." : "Your account is already empty." })); return; }
         const yes = el("input", { type: "text", placeholder: "type yes" });
         const user = el("input", { type: "text", placeholder: r.username });
         const go = el("button", { className: "btn danger", type: "button", textContent: "NUKE", disabled: true });
@@ -356,7 +357,7 @@ pre.log { white-space: pre-wrap; background: #fff; border: 1px solid var(--line)
         yes.oninput = user.oninput = check;
         const msg = el("p", { role: "status" });
         go.onclick = async () => { try { await api("/api/nuke/run", { confirm: yes.value, username: user.value }); refresh(); } catch (e) { say(msg, e.message, "err"); } };
-        out.replaceChildren(table,
+        out.replaceChildren(...skipped, table,
           el("label", { className: "field" }, `Confirmation 1 of 2: ${r.total} things will be deleted for good. Type yes:`, yes),
           el("label", { className: "field" }, `Confirmation 2 of 2: type your username (${r.username}):`, user),
           el("p", { className: "muted", textContent: "After you press NUKE it counts down from 5. Press Stop, or close this page, to cancel." }),

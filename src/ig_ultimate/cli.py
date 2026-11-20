@@ -340,15 +340,15 @@ class App:
             .replace(",", " ")
             .split()
         )
-        skip = {int(n) for n in raw if n.isdigit()}
-        steps = [s for n, s in enumerate(steps, 1) if n not in skip]
-        if not steps:
+        nums = {int(n) for n in raw if n.isdigit()}
+        skip = {key for n, (key, _l, _b) in enumerate(steps, 1) if n in nums}
+        if len(skip) == len(steps):
             raise Back
 
-        plans: list[Plan] = []
         with console.status("Counting everything (this reads your whole account, it can take a while)..."):
-            for _key, _label, build in steps:
-                plans.append(build(self.cl, self.keep))
+            plans, failed = tools.build_nuke(self.cl, self.keep, skip)
+        for label, why in failed:
+            console.print(f"[yellow]Skipped, Instagram wouldn't let us read it:[/] {label} [dim]({why})[/]")
         table = Table(title="What NUKE will do", show_lines=False)
         table.add_column("Step")
         table.add_column("Items", justify="right")
