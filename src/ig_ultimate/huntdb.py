@@ -69,13 +69,20 @@ CREATE INDEX IF NOT EXISTS by_status ON candidates(status, excluded, next_at);
 CREATE TABLE IF NOT EXISTS history (
   id INTEGER PRIMARY KEY, at REAL NOT NULL, name TEXT NOT NULL, event TEXT NOT NULL, detail TEXT NOT NULL);
 """
+CORRUPT = re.compile(r"not a database|malformed|corrupt", re.I)
 GEN_VERSION = "2"  # bump when a generator's output changes, so categories get topped up again
 MAX_CUSTOM = 500
 
 
+class HuntBusy(RuntimeError):
+    """Another hunt holds this account."""
+
+
 def db_path(account_id) -> Path:
     key = str(account_id or "").strip()
-    if not key.isdigit():  # an id is digits; anything else could be a path trick or a mix-up
+    if not (
+        key.isascii() and key.isdigit()
+    ):  # an id is digits; anything else could be a path trick or a mix-up
         raise ValueError("Unknown Instagram account id.")
     return paths.data_dir() / "hunter" / f"account-{key}.sqlite3"
 
@@ -86,13 +93,22 @@ class Store:
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.lock = threading.RLock()  # the hunt thread and dashboard requests share one connection
         self.repaired = ""
+        self.db = None
         try:
             self._open()
-        except sqlite3.DatabaseError:
-            # Corrupt file: keep it for the user, start a fresh one. Nothing is silently overwritten.
-            self.db.close()
-            broken = self.path.with_suffix(f".corrupt-{int(time.time())}")
-            self.path.replace(broken)
+        except sqlite3.DatabaseError as exc:
+            if self.db:
+                self.db.close()
+            # "locked", "unable to open", disk errors: not damage. Never set a live file aside for those.
+            if isinstance(exc, sqlite3.OperationalError) or not CORRUPT.search(str(exc)):
+                raise
+            # Damaged file: keep it (and its journal) for the user, start a fresh one.
+            stamp = int(time.time())
+            broken = self.path.with_suffix(f".corrupt-{stamp}")
+            for extra in ("", "-wal", "-shm"):
+                part = self.path.with_name(self.path.name + extra)
+                if part.exists():
+                    part.replace(broken.with_name(broken.name + extra))
             self.repaired = (
                 f"The hunt's saved data was damaged. It was kept as {broken.name}; starting fresh."
             )
@@ -108,12 +124,36 @@ class Store:
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA synchronous=FULL")
         if self.db.execute("PRAGMA quick_check").fetchone()[0] != "ok":
-            raise sqlite3.DatabaseError("quick_check failed")
+            raise sqlite3.DatabaseError("database disk image is malformed (quick_check failed)")
         self.db.executescript(SCHEMA)
 
     def close(self):
         with self.lock:
             self.db.close()
+
+    @contextlib.contextmanager
+    def hunting(self):
+        """One hunt per account across every window and process (web app, terminal, a second copy).
+        An OS file lock: released by the system even if the app is killed, so it can't go stale."""
+        fd = os.open(self.path.with_suffix(".lock"), os.O_CREAT | os.O_RDWR, 0o600)
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            os.close(fd)
+            raise HuntBusy(
+                "Another hunt is already running for this account (another window?). Nothing changed."
+            ) from exc
+        try:
+            yield
+        finally:
+            os.close(fd)  # closing releases the lock
 
     def _read(self, sql: str, args=()) -> list:
         """Every read takes the lock too: the hunt thread may be mid-transaction on this connection."""

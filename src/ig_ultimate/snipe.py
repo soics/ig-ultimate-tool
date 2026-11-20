@@ -28,6 +28,7 @@ import random
 import re
 import threading
 import time
+import weakref
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -105,6 +106,19 @@ class Answer:
     stop: str = ""  # the account needs attention: end the hunt with this message
 
 
+_LOCKS: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+_LOCKS_GUARD = threading.Lock()
+
+
+def client_lock(cl) -> threading.RLock:
+    """instagrapi keeps the last reply on the client (last_json), so two threads using one client at
+    once can read each other's answers. Every hunter call on a client goes through its one lock."""
+    with _LOCKS_GUARD:
+        if cl not in _LOCKS:
+            _LOCKS[cl] = threading.RLock()
+        return _LOCKS[cl]
+
+
 def _stop_answer(exc) -> Answer:
     return Answer("unknown", clean(exc), stop=explain(exc) or f"Instagram stopped us: {clean(exc)}")
 
@@ -124,10 +138,12 @@ class InstagrapiVerifier:
 
     def __init__(self, cl):
         self.cl = cl
+        self.lock = client_lock(cl)
 
     def account(self) -> tuple[str, str]:
         """(numeric id, username) of the account this session is signed in to, read from Instagram."""
-        a = self.cl.account_info()
+        with self.lock:
+            a = self.cl.account_info()
         return str(a.pk), str(a.username).lower()
 
     def session_id(self) -> str:
@@ -135,6 +151,14 @@ class InstagrapiVerifier:
         return str(getattr(self.cl, "user_id", "") or "")
 
     def lookup(self, name: str) -> Answer:
+        with self.lock:
+            return self._lookup(name)
+
+    def claim(self, name: str) -> Answer:
+        with self.lock:
+            return self._claim(name)
+
+    def _lookup(self, name: str) -> Answer:
         try:
             user = self.cl.user_info_by_username_v1(name)
         except ig_errors.UserNotFound:
@@ -152,7 +176,7 @@ class InstagrapiVerifier:
             return Answer("unknown", f"Instagram answered about a different account (@{got}).")
         return Answer("taken")
 
-    def claim(self, name: str) -> Answer:
+    def _claim(self, name: str) -> Answer:
         try:
             account = self.cl.account_edit(username=name)
         except SLOW_DOWN as exc:
@@ -328,15 +352,11 @@ class Hunter:
         away, or Instagram needs attention (returns "")."""
         self.state = "running"
         try:
-            if won := self._recover():
-                return won
-            self.store.ensure(self.cats)
-            mode = "claims automatically (unofficial)" if self.auto else "finds names for you to claim"
-            self.log(
-                f"Hunting: {names.PRESETS[self.preset][0]}, "
-                f"{self.min_len}-{self.max_len} characters. It {mode}."
-            )
-            return self._loop()
+            with self.store.hunting():
+                return self._run()
+        except huntdb.HuntBusy as exc:
+            self.state, self.message = "blocked", str(exc)
+            return ""
         except Exception as exc:  # noqa: BLE001 - shown in the dashboard; progress is already saved
             self.state, self.message = "error", f"The hunt stopped on an error: {clean(exc)}"
             self.log(self.message)
@@ -353,6 +373,16 @@ class Hunter:
                     "stopped": "Stopped. Progress is saved: press Start to go on.",
                 }.get(self.state, self.message or "Stopped.")
             )
+
+    def _run(self) -> str:
+        if won := self._recover():
+            return won
+        self.store.ensure(self.cats)
+        mode = "claims automatically (unofficial)" if self.auto else "finds names for you to claim"
+        self.log(
+            f"Hunting: {names.PRESETS[self.preset][0]}, {self.min_len}-{self.max_len} characters. It {mode}."
+        )
+        return self._loop()
 
     def _loop(self) -> str:
         lanes = itertools.cycle(self.cats)  # balanced = take turns between the styles
@@ -434,6 +464,9 @@ class Hunter:
             )
             return False
         self.store.mark(name, "claiming", f"claim sent for account {self.account_id}")
+        if self.stop_event.is_set() or not self.alive():  # Stop/close arrived while that was written
+            self.store.mark(name, "possibly_available", "claim not sent: the hunt stopped", soon=True)
+            return False
         self.last_claim = self.now()
         self.log(f"@{name}: no account has it. Trying to claim it...")
         ans = self.v.claim(name)

@@ -265,3 +265,44 @@ def test_secrets_never_reach_the_log():
     out = snipe.redact(text)
     assert "12345" not in out and "XYZ" not in out and "eyJ" not in out and "hunter2" not in out
     assert len(snipe.clean("x" * 500)) == 160
+
+
+def test_one_client_is_never_used_by_two_threads_at_once():
+    import threading
+
+    cl = FakeClient()
+    v = snipe.InstagrapiVerifier(cl)
+    assert snipe.InstagrapiVerifier(cl).lock is v.lock  # the dashboard and the hunter share it
+    real, other = cl.user_info_by_username_v1, {}
+
+    def slow_lookup(name):
+        t = threading.Thread(target=lambda: other.setdefault("acct", v.account()))
+        t.start()
+        t.join(0.2)
+        other["waited"] = t.is_alive()  # the account read had to wait for this reply
+        return real(name)
+
+    cl.user_info_by_username_v1 = slow_lookup
+    v.lookup("taken1")
+    assert other["waited"]
+
+
+def test_only_one_hunt_per_account_even_across_windows():
+    h, cl, store, _, _ = make()
+    with store.hunting():  # another window / the terminal is already hunting this account
+        assert h.run() == "" and h.state == "blocked" and "Another hunt" in h.message
+    assert cl._account.username == "you"
+
+
+def test_stop_arriving_while_the_claim_is_written_down_sends_nothing():
+    h, cl, store, _, _ = make(names=("quill",), first=())
+    real = store.mark
+
+    def mark(name, status, detail="", soon=False):
+        real(name, status, detail, soon)
+        if status == "claiming":
+            h.stop()
+
+    store.mark = mark
+    assert h.run() == "" and not [c for c in cl.calls if c[0] == "account_edit"]
+    assert store.row("quill")["status"] == "possibly_available"

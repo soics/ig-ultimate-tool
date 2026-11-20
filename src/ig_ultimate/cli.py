@@ -447,7 +447,8 @@ class App:
         if hunter.won:
             self.cfg["username"] = hunter.won
             self.save()
-        store.close()
+        if not worker.is_alive():  # still finishing a sent request: let it record the outcome
+            store.close()
 
     # ------------------------------------------------------------ main loop
     def ai_menu(self):

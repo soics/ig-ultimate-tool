@@ -160,3 +160,20 @@ def test_two_threads_share_the_store_safely():
     for t in threads:
         t.join()
     assert not errors and s.counts()["taken"] == 200
+
+
+def test_a_locked_database_is_never_mistaken_for_a_damaged_one(monkeypatch):
+    s = huntdb.Store("1")
+    s.add_custom(["quill"], 0)
+    s.close()
+
+    def locked(self):
+        self.db = sqlite3.connect(":memory:")
+        raise sqlite3.OperationalError("database is locked")
+
+    real_open = huntdb.Store._open
+    monkeypatch.setattr(huntdb.Store, "_open", locked)
+    with pytest.raises(sqlite3.OperationalError):
+        huntdb.Store("1")
+    monkeypatch.setattr(huntdb.Store, "_open", real_open)  # not undo(): that also drops the temp home
+    assert huntdb.Store("1").row("quill") and not list(huntdb.db_path("1").parent.glob("*.corrupt-*"))

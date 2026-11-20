@@ -382,3 +382,12 @@ def test_logout_stops_the_hunt(srv):
     assert hunt(srv, names="taken1 taken2")[0] == 200
     call(srv, "/api/logout", {})
     wait(lambda: not srv.app.hunting())
+
+
+def test_odd_tokens_are_refused_not_crashed(srv):
+    port = srv.server_address[1]
+    req = urllib.request.Request(f"http://127.0.0.1:{port}/api/state", headers={"X-Token": "é" * 10})
+    with pytest.raises(urllib.error.HTTPError) as err:
+        urllib.request.urlopen(req, timeout=5)
+    assert err.value.code == 403
+    assert call(srv, "/?t=%C3%A9", token=False)[0] == 403

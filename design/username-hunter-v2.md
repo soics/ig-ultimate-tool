@@ -91,7 +91,7 @@ The hunt now tracks a status per name for tens of thousands of names, updated ev
 
 ## 5. Tests
 
-`pytest`: 126 passed (86 at baseline).
+`pytest`: 131 passed on Python 3.12 and 3.14 (86 at baseline).
 - `test_names.py`: benchmark, determinism, risk flags, transliteration, generators.
 - `test_huntdb.py`: ordering, recheck windows, per-account isolation, 0600 permissions, corrupt-DB recovery, crash survival, v1 migration and broken v1 file, search escaping, export contents, thread safety.
 - `test_snipe.py`: claim safety, every error class, verify-after-claim, recovery, lifecycle, presence, redaction.
@@ -100,7 +100,19 @@ The hunt now tracks a status per name for tens of thousands of names, updated ev
 
 A real-Chromium run (preview account) checked every tab, keyboard tab navigation, no console errors, no page-level horizontal scroll at 390 px, and that the hunt stops by itself after the tab closes.
 
-## 6. Known limits
+## 6. Independent security review (fixed)
+
+The review found no critical or high issues. Fixed, each with a regression test:
+- **One lock per instagrapi client.** instagrapi keeps the last reply in `client.last_json`, so concurrent calls from the dashboard and the hunter could read each other's answers. Every verifier call now goes through one lock per client, and `/api/keep` is refused while a hunt runs.
+- **One hunt per account across processes.** An OS file lock (`account-<id>.lock`: `flock` on macOS/Linux, `msvcrt` on Windows) stops the web app and the terminal hunting the same account.
+- **Locked is not damaged.** Only "not a database" or "malformed" errors set a database aside, together with its `-wal`/`-shm`. A "database is locked" error is raised, never treated as corruption.
+- **Stop is re-checked after the write-ahead mark,** right before the claim is sent.
+- Tokens are compared as bytes, so non-ASCII input gets 403 instead of a crashed request thread. 500 errors are redacted.
+- A stale hunter's result is ignored after logout or a switch to preview. Logout waits for a sent claim to be recorded. Opening the store is locked. The CLI closes the store only after the worker ends.
+
+Accepted and left as it was: the pre-existing `igut` reload cookie is scoped by host, not port, so another local listener the same browser visits could receive it. Exploiting that needs a malicious local process plus a port scan.
+
+## 7. Known limits
 
 - "Possibly available" is the best a lookup can say. Only Instagram accepting the change proves availability.
 - The offensive-word filter is English-centric plus a few known cases. Invented names in other languages may still collide with slang.

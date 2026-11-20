@@ -261,6 +261,7 @@ class WebApp:
         self.job: dict | None = None
         self.cancel = threading.Event()
         self.start_lock = threading.Lock()  # a double-click must not start two jobs on one account
+        self.store_lock = threading.RLock()  # two first requests must not open two stores
         self.last_seen = time.monotonic()  # the page checks in every second; see the nuke countdown
         self.ai_stop: threading.Event | None = None
         self.ai_log: deque[str] = deque(maxlen=200)
@@ -415,6 +416,7 @@ class WebApp:
         self.hunt_stop_now()
         if self.preview:
             return self._leave_preview()
+        self.hunt_stop_now(wait=15)  # a claim already sent is recorded before the session ends
         session.logout(self.cl)
         self.cl, self.username = None, ""
         self._forget_account()
@@ -658,6 +660,10 @@ class WebApp:
         return self._acct
 
     def hunt_store(self) -> huntdb.Store:
+        with self.store_lock:
+            return self._hunt_store()
+
+    def _hunt_store(self) -> huntdb.Store:
         account_id, _ = self._account()
         if self._store is None or self._store.path != huntdb.db_path(account_id):
             self._store = huntdb.Store(account_id)
@@ -709,7 +715,8 @@ class WebApp:
             self.presence, self.hunter = presence, hunter
 
             def work():
-                if won := hunter.run():
+                won = hunter.run()
+                if won and self.hunter is hunter and self.cl is hunter.v.cl:  # not after logout/switch
                     self.username = self.cfg["username"] = won
                     self._acct = (account_id, won)
                     self.save()
@@ -846,7 +853,7 @@ class WebApp:
             "/api/nuke/plan": lambda: self.nuke_plan(body),
             "/api/nuke/run": lambda: self.nuke_run(body),
             "/api/speed": lambda: self._speed(body),
-            "/api/keep": lambda: self._keep(body),
+            "/api/keep": lambda: self._keep(body) if not self.hunting() else self._refuse(),
             "/api/ai/settings": lambda: self.ai_settings(body),
             "/api/ai/start": lambda: self.ai_start(body),
             "/api/ai/stop": lambda: self.ai_stop_now(),
@@ -868,6 +875,9 @@ class WebApp:
             raise KeyError(path)
         return routes[path]()
 
+    def _refuse(self):
+        raise ValueError(self.busy())
+
     def _speed(self, body: dict):
         self.cfg["speed"] = "fast" if body.get("speed") == "fast" else "safe"
         self.save()
@@ -880,6 +890,11 @@ class WebApp:
         else:
             self.cfg["keep"] = {**self.cfg.get("keep", {}), **chat.resolve(self.cl, names)}
         self.save()
+
+
+def _same(given: str, secret: str) -> bool:
+    """Constant-time compare that can't crash on non-ASCII input (compare_digest on str can)."""
+    return hmac.compare_digest(given.encode("utf-8", "replace"), secret.encode())
 
 
 def page() -> bytes:
@@ -914,7 +929,7 @@ class Handler(BaseHTTPRequestHandler):
         return self.headers.get("Host", "") in self.server.hosts  # type: ignore[attr-defined]
 
     def _authed(self) -> bool:
-        return hmac.compare_digest(self.headers.get("X-Token", ""), self.server.token)  # type: ignore[attr-defined]
+        return _same(self.headers.get("X-Token", ""), self.server.token)  # type: ignore[attr-defined]
 
     def do_GET(self):
         url = urlparse(self.path)
@@ -925,9 +940,9 @@ class Handler(BaseHTTPRequestHandler):
             # command line). It is swapped for a browser-only cookie; the API token lives in the page.
             srv = self.server
             boot = parse_qs(url.query).get("t", [""])[0]
-            fresh = bool(srv.boot) and hmac.compare_digest(boot, srv.boot)  # type: ignore[attr-defined]
+            fresh = bool(srv.boot) and _same(boot, srv.boot)  # type: ignore[attr-defined]
             jar = SimpleCookie(self.headers.get("Cookie", ""))
-            known = "igut" in jar and hmac.compare_digest(jar["igut"].value, srv.cookie)  # type: ignore[attr-defined]
+            known = "igut" in jar and _same(jar["igut"].value, srv.cookie)  # type: ignore[attr-defined]
             if not (fresh or known):
                 return self._send(
                     403,
@@ -981,7 +996,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": str(exc)})
         except Exception as exc:  # noqa: BLE001 - explain instead of a stack trace in the browser
             return self._send(
-                500, {"error": engine.explain(exc) or f"Something went wrong: {str(exc)[:200]}"}
+                500, {"error": engine.explain(exc) or f"Something went wrong: {snipe.clean(exc)}"}
             )
 
 
