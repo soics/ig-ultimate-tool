@@ -707,7 +707,7 @@ class WebApp:
             hunter = snipe.Hunter(
                 snipe.InstagrapiVerifier(self.cl), self.hunt_store(), account_id, me, log=self._hunt_log,
                 preset=preset, min_len=lo, max_len=hi, langs=self._langs(body), auto_claim=grant,
-                alive=presence.alive,
+                alive=presence.alive, speed=self.cfg.get("speed", "safe"),
             )  # fmt: skip
             if self.preview:  # the pretend account: waits pass a thousand times faster
                 fast = _FastClock(hunter.stop_event)

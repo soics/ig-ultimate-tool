@@ -140,6 +140,21 @@ def test_username_change_limit_is_not_mistaken_for_held():
     assert store.row("quill")["status"] == "unknown"  # v1 wrongly buried every later free name as held
 
 
+def test_speed_setting_and_keeping_the_computer_awake_only_while_hunting(monkeypatch):
+    from ig_ultimate import awake
+
+    held = []
+    monkeypatch.setattr(awake, "_start", lambda: held.append("on") or (lambda: held.append("off")))
+    h, _, _, clock, logs = make(
+        auto=False, names=("zen", "quill", "lumen", "kairos"), max_checks=3, speed="fast"
+    )
+    assert h.info()["per_hour"] == 480 and h.info()["speed"] == "fast"
+    h.run()
+    assert held == ["on", "off"] and any("won't go to sleep" in s for s in logs)
+    assert clock.t <= 3 * snipe.FAST_GAP[1] + 1  # three lookups at the fast pace
+    assert make(auto=False)[0].info()["per_hour"] == 240  # safe is the default
+
+
 def test_og_path_finishes_each_step_before_the_next():
     from ig_ultimate import names
 

@@ -433,6 +433,7 @@ class App:
             me,
             log=lambda s: console.print(f"  [dim]{time.strftime('%H:%M')}[/] {s}"),
             preset=preset,
+            speed=self.cfg.get("speed", "safe"),
             auto_claim=grant,
         )
         worker = threading.Thread(target=hunter.run, daemon=True)

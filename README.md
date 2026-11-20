@@ -207,7 +207,7 @@ The same steps show in the app when you pick an AI. Open the one you chose:
    - **Structured alphanumeric**: short mixes of letters and numbers.
    - **Your own names**: type names you thought of yourself.
 2. Click the **Discovery** tab. It shows the best names it hasn't checked yet. Click a name to see *why* it got its score. Press the ⭐ star on names you love (they get checked first) and hide names you don't like. It learns what you like.
-3. Click the **Hunter** tab, then **Start hunting**. Now leave it running. It checks about **240 names an hour** (one every 10 to 20 seconds), and if Instagram says "slow down", it waits by itself.
+3. Click the **Hunter** tab, then **Start hunting**. Now leave it running. It checks about **240 names an hour** (one every 10 to 20 seconds), and if Instagram says "slow down", it waits by itself. Want it faster? **Settings → Speed → Fast** checks about **480 an hour**, but Instagram will say "slow down" more often.
 4. When it finds a name with no account, it shows up in the **Results** tab as **possibly available**. To grab it:
    1. Copy the name.
    2. Open the Instagram app → your profile → **Edit profile** → **Username**, paste it and save.
@@ -221,7 +221,13 @@ The same steps show in the app when you pick an AI. Open the one you chose:
 - The moment it works, your account gets the new name and **your old name becomes free for anyone to take**.
 - It stops hunting after it gets a name.
 
-**It only hunts while the page is open.** Switching tabs or minimizing is fine. If you close the page (or the laptop goes to sleep), it stops within a few seconds and keeps its progress. Press **Start hunting** again to continue. In the black-window version, it hunts while that window is open, and **Ctrl+C** stops it.
+**Hunting all night.** Press **Start hunting**, leave the page open, and go to sleep, watch YouTube, whatever you like. It never stops by itself while the page is open. While it hunts, it also keeps your computer from going to sleep by itself (the screen can still turn off). Two things still stop it:
+- **Closing the page** (or the browser). It stops a few seconds later and keeps its progress. Press **Start hunting** again to continue.
+- **Closing a laptop's lid.** No app can stop that from putting the laptop to sleep, so keep the lid open and the charger plugged in.
+
+Switching tabs or minimizing is fine. In the black-window version, it hunts while that window is open, and **Ctrl+C** stops it.
+
+**Why do I see "waiting 15 minutes"?** That's Instagram saying "slow down", usually right after a claim. The hunt hasn't stopped: it waits, then carries on by itself.
 
 ## Questions
 
