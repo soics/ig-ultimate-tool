@@ -360,13 +360,20 @@ def setup_ai(app, a: dict) -> None:
     p = ai.PRESETS[provider]
     s = {"provider": provider, "key": "", "model": "", "stt_model": "", "base_url": p.get("base_url", "")}
     console.print(f"[dim]{p['privacy']}[/]")
+    console.print("\n[bold]How to set it up[/]")
+    for n, step in enumerate(p["steps"], 1):
+        console.print(f"  {n}. {step}", markup=False)  # steps hold commands with [ ] / | characters
+    needs_key = p.get("kind") != "cli" and not p.get("no_key")
+    if p.get("key_url") and not needs_key:
+        console.print(f"Guide: [link]{p['key_url']}[/]")
+        ask("Press Enter when the steps above are done:")
     if provider == "custom":
         try:
             s["base_url"] = ai.check_url(ask("Server URL (ends in /v1):"))
         except ai.AIError as exc:
             console.print(f"[red]{exc}[/]")
             raise Back from None
-    if p.get("kind") != "cli" and not p.get("no_key"):
+    if needs_key:
         if p.get("key_url"):
             console.print(f"Get a key here: [link]{p['key_url']}[/]")
         try:

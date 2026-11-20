@@ -297,7 +297,15 @@ class WebApp:
             ],
             "nuke": [{"key": k, "label": label} for k, label, _b in tools.NUKE_STEPS],
             "providers": [
-                {"key": k, "label": p["label"], "privacy": p["privacy"]} for k, p in ai.PRESETS.items()
+                {
+                    "key": k,
+                    "label": p["label"],
+                    "privacy": p["privacy"],
+                    "steps": p["steps"],
+                    "link": p.get("key_url", ""),
+                    "needs_key": p.get("kind") != "cli" and not p.get("no_key"),
+                }
+                for k, p in ai.PRESETS.items()
             ],
             "claude_models": [{"id": m, "label": label} for m, label in ai.PRESETS["anthropic"]["models"]],
             "modes": chat.MODES,

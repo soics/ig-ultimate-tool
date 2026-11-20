@@ -226,6 +226,13 @@ def test_every_tool_explains_itself(srv):
     assert all(t["help"] for t in call(srv, "/api/catalog")[1]["tools"])
 
 
+def test_every_ai_has_setup_steps_and_only_key_ones_ask_for_a_key(srv):
+    providers = {p["key"]: p for p in call(srv, "/api/catalog")[1]["providers"]}
+    assert all(len(p["steps"]) >= 3 for p in providers.values())
+    assert {k for k, p in providers.items() if not p["needs_key"]} == {"ollama", "claude_code", "codex"}
+    assert all(p["link"].startswith("https://") for k, p in providers.items() if k != "custom")
+
+
 def test_custom_ai_key_never_follows_a_new_address(srv, monkeypatch):
     seen = []
     monkeypatch.setattr(webapp.ai, "list_models", lambda s: seen.append(dict(s)) or ["m"])

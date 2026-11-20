@@ -55,18 +55,117 @@ The first time, it sets itself up (a minute or two). It installs [uv](https://do
 - **Try everything on a pretend account first**: look around safely, nothing real changes.
 - **Log in here**: everything in the black window. Type the number you want and press Enter; **Ctrl+C** always goes back.
 
-## AI auto-reply in 2 minutes
+## AI auto-reply
 
-1. Get a free key at [console.groq.com/keys](https://console.groq.com/keys) (sign in with Google, click *Create API Key*, copy it).
-2. In the tool: **AI auto-reply → Set up AI → Groq** → paste the key.
-3. **Personality**: your nickname and how you text ("lowercase, lots of lol, short replies").
-4. **Who it replies to**: everyone, your whitelist, or usernames you paste.
-5. **Try it here first** to chat with your AI without touching Instagram, then **Start replying**.
+Answers new DMs the way you text: photos, memes, voice notes and reels included. It only answers messages that arrive after you press Start, sends one message per reply, steps back if you reply yourself, and stays out of group chats unless you turn them on. If someone sincerely asks whether they're talking to a bot, it won't lie.
 
-It only answers messages that arrive after you press Start, sends one message per reply, steps back if you reply yourself, and stays out of group chats unless you turn them on. If someone sincerely asks whether they're talking to a bot, it won't lie.
+### Step 1: pick your AI
+
+| You have... | Pick | Cost |
+|---|---|---|
+| Nothing yet, and want it free | **Groq** (recommended) | free |
+| A **Claude Pro or Max** plan | **Claude Code** | included in your plan |
+| A **ChatGPT Plus, Pro or Business** plan | **Codex** | included in your plan |
+| A business, or you want the best replies | **Claude API key** or **OpenAI API key** | pay per use |
+| You want nothing to leave your computer | **Ollama** | free, needs a decent PC |
+| Your own AI server | **Any other OpenAI-compatible server** | your server |
+
+- **A Claude or ChatGPT subscription is not an API key.** API keys are a separate pay-as-you-go account. Already paying for a plan? Use Claude Code or Codex, no key needed.
+- **Groq (with a Q) is not Elon Musk's Grok.** It's a different company with a free tier.
+- **Businesses:** use an API key billed to the business, not someone's personal plan.
+
+### Step 2: set it up
+
+The same steps show in the app when you pick an AI. Open the one you chose:
 
 <details>
-<summary><b>Which AI should I pick?</b></summary>
+<summary><b>Groq (free, recommended)</b></summary>
+
+1. Go to [console.groq.com/keys](https://console.groq.com/keys) and sign in with Google, GitHub or email. No card needed.
+2. Click **Create API Key**, type any name (like `instagram`) and copy the key. It's shown only once.
+3. In the tool, pick **Groq**, paste the key and press **Save and test**.
+</details>
+
+<details>
+<summary><b>Google Gemini (free)</b></summary>
+
+1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and sign in with a Google account.
+2. Click **Create API key**. If it asks for a project, let it make one. Copy the key.
+3. In the tool, pick **Google Gemini**, paste the key and press **Save and test**.
+4. ⚠️ On the free tier Google may use your messages to improve its products. Prefer Groq for personal DMs.
+</details>
+
+<details>
+<summary><b>OpenRouter (free models, low daily limit)</b></summary>
+
+1. Sign up at [openrouter.ai](https://openrouter.ai).
+2. Go to [openrouter.ai/keys](https://openrouter.ai/keys), click **Create Key** and copy it.
+3. In the tool, pick **OpenRouter**, paste the key and press **Save and test**.
+4. Free models have a small daily limit. A few dollars of credit raises it.
+</details>
+
+<details>
+<summary><b>Ollama (free, private, runs on your computer)</b></summary>
+
+1. Install Ollama from [ollama.com/download](https://ollama.com/download) and open it. It needs about 8 GB of RAM.
+2. In a terminal, run `ollama pull gemma3` (about 3 GB; it also understands photos).
+3. Leave Ollama running. In the tool, pick **Ollama** and press **Save and test**. No key needed.
+</details>
+
+<details>
+<summary><b>OpenAI API key (paid)</b></summary>
+
+1. A ChatGPT plan does **not** include API access. Have a plan? Use Codex instead.
+2. Sign in at [platform.openai.com](https://platform.openai.com) and add credit under **Settings → Billing**.
+3. Go to [platform.openai.com/api-keys](https://platform.openai.com/api-keys), click **Create new secret key** and copy it.
+4. In the tool, pick **OpenAI API key**, paste the key and press **Save and test**.
+</details>
+
+<details>
+<summary><b>Claude API key (paid)</b></summary>
+
+1. A Claude Pro or Max plan does **not** include API access. Have a plan? Use Claude Code instead.
+2. Sign in at [console.anthropic.com](https://console.anthropic.com) and buy credit under **Billing**.
+3. Go to [Settings → API keys](https://console.anthropic.com/settings/keys), click **Create Key** and copy it.
+4. In the tool, pick **Claude API key**, paste the key, choose which Claude (Haiku is cheapest) and press **Save and test**.
+</details>
+
+<details>
+<summary><b>Claude Code (uses your Claude Pro or Max plan)</b></summary>
+
+1. Install Claude Code ([full guide](https://code.claude.com/docs/en/setup)). Mac or Linux terminal: `curl -fsSL https://claude.ai/install.sh | bash`. Windows PowerShell: `irm https://claude.ai/install.ps1 | iex`
+2. Open a new terminal, run `claude`, sign in with your Claude account, then type `/exit`.
+3. Close and reopen IG Ultimate Tool so it finds Claude Code.
+4. Pick **Claude Code** and press **Save and test**. No key needed; replies use your plan's limits and take a few seconds longer.
+</details>
+
+<details>
+<summary><b>Codex (uses your ChatGPT plan)</b></summary>
+
+1. Install [Node.js](https://nodejs.org), then in a terminal run `npm install -g @openai/codex` ([full guide](https://developers.openai.com/codex/cli)).
+2. Run `codex`, choose **Sign in with ChatGPT**, then exit it.
+3. Close and reopen IG Ultimate Tool so it finds Codex.
+4. Pick **Codex** and press **Save and test**.
+5. ⚠️ Codex can read **every file** on your computer account, so it only answers your whitelist or usernames you paste. Use it only with people you fully trust.
+</details>
+
+<details>
+<summary><b>Your own server (advanced, for businesses)</b></summary>
+
+1. Any server that speaks the OpenAI API works: LM Studio, vLLM, LiteLLM and others.
+2. Pick **Any other OpenAI-compatible server** and enter its address ending in `/v1`. It must be `https://`, or `http://localhost` for a server on the same computer.
+3. Paste the server's key if it needs one and press **Save and test**.
+</details>
+
+### Step 3: turn it on
+
+1. **Personality**: your nickname and how you text ("lowercase, lots of lol, short replies").
+2. **Who it replies to**: everyone, your whitelist, or usernames you paste.
+3. **Try it first**: in the terminal version, *Try it here first* lets you chat with your AI without touching Instagram.
+4. Press **Start replying**.
+
+<details>
+<summary><b>Compare the AIs (photos, voice notes, privacy)</b></summary>
 
 | AI | Cost | Photos | Voice notes | Privacy |
 |---|---|---|---|---|
