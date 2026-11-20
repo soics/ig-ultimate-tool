@@ -62,3 +62,19 @@ def test_logout_forgets_the_session():
     paths.write_json(session.session_file(), {"uuids": {}})
     session.logout()
     assert not session.session_file().exists()
+
+
+def test_logout_ends_the_instagram_login_and_survives_being_offline():
+    cl = FakeClient()
+    paths.write_json(session.session_file(), {"uuids": {}})
+    broken = session.session_file().with_suffix(".corrupt")
+    broken.write_text("{broken")
+    session.logout(cl)
+    assert ("logout",) in cl.calls
+    assert not session.session_file().exists() and not broken.exists()
+
+    class Offline:
+        def logout(self):
+            raise OSError("no internet")
+
+    session.logout(Offline())  # still forgets it locally

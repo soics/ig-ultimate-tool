@@ -280,7 +280,7 @@ class App:
         elif c == "3":
             from . import session
 
-            session.logout()
+            session.logout(self.cl)
             console.print("Logged out. Your Instagram account itself is untouched.")
             raise SystemExit(0)
 

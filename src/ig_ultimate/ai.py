@@ -245,7 +245,8 @@ def _transcript(system: str, turns: list[dict], image_names: list[str]) -> str:
 
 def _cli(provider: str, s: dict, system: str, turns: list[dict]) -> str:
     exe = "claude" if provider == "claude_code" else "codex"
-    if not shutil.which(exe):
+    path = shutil.which(exe)  # full path: on Windows npm installs a .cmd that a bare name won't start
+    if not path:
         raise AIError(f"'{exe}' isn't installed on this computer, or isn't on PATH.")
     images = [i for t in turns[-1:] for i in t.get("images", [])]
     folder = s.get("agent_folder") or ""
@@ -260,7 +261,7 @@ def _cli(provider: str, s: dict, system: str, turns: list[dict]) -> str:
             # nothing but this message's photos.
             tools = "Read,Glob,Grep" if folder else ("Read" if names else "")
             cmd = [
-                "claude",
+                path,
                 "-p",
                 "--restricted",
                 "--strict-mcp-config",
@@ -277,7 +278,7 @@ def _cli(provider: str, s: dict, system: str, turns: list[dict]) -> str:
         else:
             out_file = Path(tmp) / "reply.txt"
             cmd = [
-                "codex",
+                path,
                 "exec",
                 "--skip-git-repo-check",
                 "--ignore-user-config",  # your own Codex MCP servers/settings never run on a DM's say-so
@@ -289,10 +290,12 @@ def _cli(provider: str, s: dict, system: str, turns: list[dict]) -> str:
             ]
             cmd += ["-o", str(out_file)] + [arg for name in names for arg in ("-i", name)]
             cmd += ["-m", s["model"]] if s.get("model") else []
-            run = subprocess.run(  # noqa: S603 - fixed argv list, no shell; "--" ends option parsing
-                [*cmd, "--", prompt],
+            # The DM text goes in on stdin ("-"), never argv: argv is visible to other users (ps) and,
+            # for a Windows .cmd, gets re-parsed by cmd.exe, where a crafted message could run commands.
+            run = subprocess.run(  # noqa: S603 - fixed argv list, no shell
+                [*cmd, "--", "-"],
+                input=prompt,
                 cwd=folder or tmp,
-                stdin=subprocess.DEVNULL,  # otherwise codex waits for extra input from the keyboard
                 capture_output=True,
                 text=True,
                 timeout=180,

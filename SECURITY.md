@@ -6,7 +6,7 @@ All files live in your per-user app-data folder (not the download folder). The f
 
 | File | What it is | Sensitive? |
 |---|---|---|
-| `session.json` | Instagram's login session (cookies + device ids) | **Yes: full access to your account.** Never share it. Settings → *Log out of this computer* deletes it. |
+| `session.json` | Instagram's login session (cookies + device ids) | **Yes: full access to your account.** Never share it. Settings → *Log out of this computer* deletes it and tells Instagram to end that login, so an old copy stops working too. |
 | `settings.json` | Your choices: speed, keep-list, whitelist, AI settings (including the AI key you pasted) | Yes, it holds your AI key |
 | `runs/*.json` | Progress of interrupted runs (Instagram ids only) | No |
 | `lists/*.txt` | The last list each tool showed you | Usernames only |
