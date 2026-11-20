@@ -63,6 +63,21 @@ def test_an_unclear_username_check_leaves_it_to_the_claim():
     assert h.run() == "quill" and store.row("zen")["status"] == "held"  # the claim itself said no
 
 
+def test_a_slow_down_from_the_username_check_never_stalls_the_hunt():
+    cl = FakeClient()
+    asked = []
+
+    def throttled(name):
+        asked.append(name)
+        raise ig_errors.ClientThrottledError("429 Client Error: for url: .../users/check_username/")
+
+    cl.check_username = throttled
+    h, cl, store, clock, _ = make(cl)
+    assert h.run() == "quill" and store.row("zen")["status"] == "held"  # the claims decided instead
+    assert asked == ["zen"]  # asked once, then left alone instead of hammering it
+    assert clock.t < snipe.BACKOFF[0]  # no 15-minute hunt pause over the check
+
+
 def test_manual_mode_never_touches_the_account():
     h, cl, store, _, logs = make(auto=False, max_checks=2)
     assert h.run() == "" and cl._account.username == "you"

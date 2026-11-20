@@ -59,6 +59,7 @@ EXPLAIN = (
 LOOKUP_GAP = (10.0, 20.0)  # seconds between lookups: ~240 an hour; a "slow down" still backs off
 FAST_GAP = (5.0, 10.0)  # Settings > Speed: Fast. ~480 an hour: more "slow down" pauses are likely
 CLAIM_GAP = 60.0  # at most one username change attempt a minute (only after a refused one)
+CHECK_OFF = 30 * 60.0  # the username check said "slow down": claim directly for 30 min instead
 CLAIM_REFUSED = 7 * 86400.0  # a change refused for a reason we don't recognise: not tried again for a week
 BACKOFF = (15 * 60.0, 2 * 3600.0)  # "too many requests": 15 min, doubling, max 2 h
 OFFLINE = (60.0, 15 * 60.0)  # no connection: 1 min, doubling, max 15 min, then the same name again
@@ -150,6 +151,7 @@ class InstagrapiVerifier:
     def __init__(self, cl):
         self.cl = cl
         self.lock = client_lock(cl)
+        self.check_off_until = 0.0  # the username check said "slow down": skipped until then
 
     def account(self) -> tuple[str, str]:
         """(numeric id, username) of the account this session is signed in to, read from Instagram."""
@@ -173,11 +175,16 @@ class InstagrapiVerifier:
         """Instagram's own username check, for a name the lookup found no account for. It tells a
         held name from a free one without spending a username change. None = no clear answer: the
         claim itself decides, as before."""
+        if time.monotonic() < self.check_off_until:
+            return None
         with self.lock:
             try:
                 r = self.cl.check_username(name)
-            except SLOW_DOWN as exc:
-                return Answer("rate_limited", clean(exc))
+            except SLOW_DOWN:
+                # Live 2026-11-20: this check got a 429 while lookups were fine. Don't stall the hunt:
+                # leave the check alone for a while and let the claim decide, as before.
+                self.check_off_until = time.monotonic() + CHECK_OFF
+                return None
             except STOP_NOW as exc:
                 return _stop_answer(exc)
             except Exception:  # noqa: BLE001 - unclear: fall back to the claim, never guess "held"
